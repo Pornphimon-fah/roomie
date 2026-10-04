@@ -9,7 +9,8 @@ let state = {
   equipments: [],
   myBookings: [],
   selectedRoom: null,
-  appliedPromo: null
+  appliedPromo: null,
+  selectedEquipments: {} // { eqId: qty }
 };
 
 // Initialize Application
@@ -310,7 +311,7 @@ function quickBookTimeline(roomId, date, time) {
   calculateBookingPrice();
 }
 
-// --- Render Equipment Select List ---
+// --- Render Equipment Add-on Cards (Redesigned Stepper UI) ---
 function renderEquipmentSelectList() {
   const container = document.getElementById('equipment-select-list');
   if (state.equipments.length === 0) {
@@ -318,24 +319,88 @@ function renderEquipmentSelectList() {
     return;
   }
 
-  container.innerHTML = state.equipments.map(eq => `
-    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
-      <div>
-        <strong>${eq.name}</strong> 
-        <span style="color: var(--accent-primary); font-weight: 600;">(สมาชิก ฿${eq.member_price} / ปกติ ฿${eq.standard_price})</span>
+  container.innerHTML = state.equipments.map(eq => {
+    const qty = state.selectedEquipments[eq.id] || 0;
+    const isActive = qty > 0 ? 'active' : '';
+
+    return `
+      <div class="equipment-addon-card ${isActive}" id="eq-card-${eq.id}">
+        <div class="equipment-info">
+          <div class="equipment-icon">
+            <i class="fa-solid ${getEquipmentIcon(eq.name)}"></i>
+          </div>
+          <div>
+            <div class="equipment-title">${eq.name}</div>
+            <div class="equipment-prices">
+              <span class="price-tag-member">สมาชิก: ฿${parseFloat(eq.member_price).toLocaleString()}</span>
+              <span>•</span>
+              <span class="price-tag-standard">ปกติ: ฿${parseFloat(eq.standard_price).toLocaleString()}</span>
+              <span>•</span>
+              <span style="color: var(--text-muted);">เหลือ ${eq.available_quantity} ชิ้น</span>
+            </div>
+          </div>
+        </div>
+        <div class="stepper-control">
+          <button type="button" class="stepper-btn" onclick="changeEquipmentQty(${eq.id}, -1)" ${qty <= 0 ? 'disabled' : ''}>-</button>
+          <span class="stepper-val" id="eq-qty-val-${eq.id}">${qty}</span>
+          <button type="button" class="stepper-btn" onclick="changeEquipmentQty(${eq.id}, 1)" ${qty >= eq.available_quantity ? 'disabled' : ''}>+</button>
+        </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <span>คงเหลือ ${eq.available_quantity} ชิ้น</span>
-        <input type="number" id="eq-qty-${eq.id}" data-eq-id="${eq.id}" class="form-control eq-qty-input" value="0" min="0" max="${eq.available_quantity}" style="width: 65px; padding: 0.2rem 0.4rem;" onchange="calculateBookingPrice()">
-      </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+}
+
+function getEquipmentIcon(name) {
+  const n = name.toLowerCase();
+  if (n.includes('mic') || n.includes('ไมค์')) return 'fa-microphone';
+  if (n.includes('projector') || n.includes('โปรเจคเตอร์')) return 'fa-video';
+  if (n.includes('whiteboard') || n.includes('กระดาน')) return 'fa-chalkboard';
+  if (n.includes('conference') || n.includes('กล้อง')) return 'fa-headset';
+  return 'fa-plug';
+}
+
+function changeEquipmentQty(eqId, delta) {
+  const eq = state.equipments.find(e => e.id === eqId);
+  if (!eq) return;
+
+  let currentQty = state.selectedEquipments[eqId] || 0;
+  let newQty = currentQty + delta;
+
+  if (newQty < 0) newQty = 0;
+  if (newQty > eq.available_quantity) newQty = eq.available_quantity;
+
+  state.selectedEquipments[eqId] = newQty;
+  renderEquipmentSelectList();
+  calculateBookingPrice();
+}
+
+// --- Reset Booking Form Fields completely ---
+function resetBookingForm() {
+  document.getElementById('booking-form').reset();
+  document.getElementById('guest-name').value = '';
+  document.getElementById('guest-email').value = '';
+  document.getElementById('guest-phone').value = '';
+  document.getElementById('booking-subject').value = '';
+  document.getElementById('booking-purpose').value = '';
+  document.getElementById('booking-promo-code').value = '';
+  
+  const msgEl = document.getElementById('promo-msg');
+  if (msgEl) msgEl.innerText = '';
+
+  state.appliedPromo = null;
+  state.selectedEquipments = {}; // Clear all equipment selections
+  
+  setDefaultDates();
+  renderEquipmentSelectList();
 }
 
 // --- Booking Modal & Price Calculator ---
 function openBookingModal(roomId) {
   state.selectedRoom = state.rooms.find(r => r.id === roomId);
   if (!state.selectedRoom) return;
+
+  // 1. Reset all fields completely
+  resetBookingForm();
 
   document.getElementById('booking-room-id').value = state.selectedRoom.id;
   document.getElementById('modal-room-title').innerText = `จองห้อง: ${state.selectedRoom.name}`;
@@ -386,9 +451,9 @@ function calculateBookingPrice() {
 
   // Equipment Price
   let equipPriceTotal = 0;
-  document.querySelectorAll('.eq-qty-input').forEach(input => {
-    const qty = parseInt(input.value) || 0;
-    const eqId = parseInt(input.dataset.eqId);
+  Object.keys(state.selectedEquipments).forEach(eqIdStr => {
+    const eqId = parseInt(eqIdStr);
+    const qty = state.selectedEquipments[eqId];
     const eq = state.equipments.find(e => e.id === eqId);
     if (eq && qty > 0) {
       const eqRate = isMember ? parseFloat(eq.member_price) : parseFloat(eq.standard_price);
@@ -454,11 +519,12 @@ async function handleBookingSubmit(e) {
 
   // Gather equipment selections
   const equipments = [];
-  document.querySelectorAll('.eq-qty-input').forEach(input => {
-    const qty = parseInt(input.value) || 0;
+  Object.keys(state.selectedEquipments).forEach(eqIdStr => {
+    const eqId = parseInt(eqIdStr);
+    const qty = state.selectedEquipments[eqId];
     if (qty > 0) {
       equipments.push({
-        equipment_id: parseInt(input.dataset.eqId),
+        equipment_id: eqId,
         quantity: qty
       });
     }
@@ -499,6 +565,9 @@ async function handleBookingSubmit(e) {
     document.getElementById('success-booking-code').innerText = data.booking_code;
     document.getElementById('slip-booking-id').value = data.id;
     openModal('success-modal');
+
+    // Reset form after successful submission
+    resetBookingForm();
 
     fetchRooms();
   } catch (err) {
