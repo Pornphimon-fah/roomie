@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: roomie-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: roomie_user
+      POSTGRES_PASSWORD: roomie_password
+      POSTGRES_DB: roomie_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - roomie_pgdata:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer:latest
+    container_name: roomie-adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  roomie_pgdata:
