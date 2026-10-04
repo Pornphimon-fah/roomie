@@ -20,11 +20,26 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchRooms();
   fetchEquipments();
   setDefaultDates();
+  initActiveTab();
 
   // Polling for Auto-Release Check & Data Sync every 30s
   setInterval(() => {
     fetchRooms();
   }, 30000);
+});
+
+function initActiveTab() {
+  const hash = window.location.hash.replace('#', '');
+  const savedTab = localStorage.getItem('roomie_active_tab');
+  const targetTab = hash || savedTab || 'rooms';
+  switchNavTab(targetTab);
+}
+
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.replace('#', '');
+  if (hash) {
+    switchNavTab(hash);
+  }
 });
 
 // --- Theme Management ---
@@ -156,6 +171,16 @@ function handleLogout() {
 
 // --- Navigation Tabs ---
 function switchNavTab(tabName) {
+  const validTabs = ['rooms', 'timeline', 'my-bookings', 'admin'];
+  if (!validTabs.includes(tabName)) tabName = 'rooms';
+
+  // Guard admin tab access
+  if (tabName === 'admin') {
+    if (!state.user || (state.user.role !== 'admin' && state.user.role !== 'room_manager')) {
+      tabName = 'rooms';
+    }
+  }
+
   document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('main > section').forEach(el => el.style.display = 'none');
 
@@ -175,6 +200,11 @@ function switchNavTab(tabName) {
     document.getElementById('view-admin').style.display = 'block';
     loadAdminDashboard();
   }
+
+  if (window.location.hash.replace('#', '') !== tabName) {
+    history.replaceState(null, '', '#' + tabName);
+  }
+  localStorage.setItem('roomie_active_tab', tabName);
 }
 
 function getLocalDateString(d = new Date()) {
