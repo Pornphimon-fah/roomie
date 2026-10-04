@@ -1479,44 +1479,46 @@ async function openRoomModal(roomId = null) {
 
   const { value: formValues } = await Swal.fire({
     title: roomId ? '✏️ แก้ไขข้อมูลห้องประชุม' : '➕ เพิ่มห้องประชุมใหม่',
-    width: '600px',
+    width: '780px',
     html: `
-      <div style="text-align: left; font-size: 0.9rem;">
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">ชื่อห้องประชุม *</label>
-          <input id="swal-room-name" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.name : ''}" placeholder="เช่น Grand Ballroom A">
-        </div>
-        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+      <div style="text-align: left; font-size: 0.95rem; padding: 0.25rem 0;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600;">สถานที่ / ชั้น *</label>
-            <input id="swal-room-location" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.location : ''}" placeholder="เช่น Floor 3, Zone A">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🏢 ชื่อห้องประชุม *</label>
+            <input id="swal-room-name" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room ? room.name : ''}" placeholder="เช่น Grand Ballroom A">
           </div>
           <div>
-            <label style="font-weight: 600;">ความจุผู้เข้าร่วม (คน) *</label>
-            <input type="number" id="swal-room-capacity" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.capacity : 10}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📍 สถานที่ / ชั้น *</label>
+            <input id="swal-room-location" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room ? room.location : ''}" placeholder="เช่น Floor 3, Zone A">
           </div>
         </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">URL รูปภาพห้องประชุม</label>
-          <input id="swal-room-image" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room && room.image_url ? room.image_url : ''}" placeholder="https://images.unsplash.com/...">
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600;">ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
-            <input type="number" step="0.01" id="swal-room-std-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.standard_price : 300}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">👥 ความจุผู้เข้าร่วม (คน) *</label>
+            <input type="number" id="swal-room-capacity" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room ? room.capacity : 10}">
           </div>
           <div>
-            <label style="font-weight: 600;">ราคาสมาชิก (บาท/ชม.) *</label>
-            <input type="number" step="0.01" id="swal-room-mem-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.member_price : 250}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🖼️ URL รูปภาพห้องประชุม</label>
+            <input id="swal-room-image" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room && room.image_url ? room.image_url : ''}" placeholder="https://images.unsplash.com/...">
           </div>
         </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">รายละเอียดห้องประชุม</label>
-          <textarea id="swal-room-desc" class="swal2-textarea" style="width: 100%; margin-top: 0.25rem; height: 70px;" placeholder="สิ่งอำนวยความสะดวก รายละเอียดห้อง...">${room && room.description ? room.description : ''}</textarea>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">💰 ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-room-std-price" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room ? room.standard_price : 300}">
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">💎 ราคาสมาชิก (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-room-mem-price" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room ? room.member_price : 250}">
+          </div>
         </div>
-        <div style="display: flex; gap: 1rem; align-items: center; background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px;">
-          <input type="checkbox" id="swal-room-approval" style="width: 18px; height: 18px;" ${!room || room.requires_approval ? 'checked' : ''}>
-          <label for="swal-room-approval" style="font-size: 0.88rem; cursor: pointer;">ต้องรอการอนุมัติการจองจากเจ้าหน้าที่ (Requires Approval)</label>
+        <div style="margin-bottom: 0.85rem;">
+          <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📝 รายละเอียด / สิ่งอำนวยความสะดวก</label>
+          <textarea id="swal-room-desc" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); height: 60px;" placeholder="สิ่งอำนวยความสะดวก รายละเอียดห้อง...">${room && room.description ? room.description : ''}</textarea>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center; background: var(--bg-tertiary); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+          <input type="checkbox" id="swal-room-approval" style="width: 18px; height: 18px; cursor: pointer;" ${!room || room.requires_approval ? 'checked' : ''}>
+          <label for="swal-room-approval" style="font-size: 0.9rem; cursor: pointer; color: var(--text-primary);">ต้องรอการอนุมัติการจองจากเจ้าหน้าที่ (Requires Approval)</label>
         </div>
       </div>
     `,
@@ -1618,40 +1620,42 @@ async function openPromoModal(promoId = null) {
 
   const { value: formValues } = await Swal.fire({
     title: promoId ? '✏️ แก้ไขโค้ดโปรโมชั่น' : '➕ เพิ่มโค้ดส่วนลด/โปรโมชั่นใหม่',
-    width: '580px',
+    width: '780px',
     html: `
-      <div style="text-align: left; font-size: 0.9rem;">
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">รหัสส่วนลด (Promo Code) *</label>
-          <input id="swal-promo-code" class="swal2-input" style="width: 100%; margin-top: 0.25rem; text-transform: uppercase;" value="${promo ? promo.code : ''}" placeholder="เช่น ROOMIE2026">
-        </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">คำอธิบายรายละเอียดโปรโมชั่น</label>
-          <input id="swal-promo-desc" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${promo && promo.description ? promo.description : ''}" placeholder="ส่วนลดพิเศษ 15% สำหรับทุกการจอง">
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+      <div style="text-align: left; font-size: 0.95rem; padding: 0.25rem 0;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600;">ส่วนลด (%)</label>
-            <input type="number" step="0.1" id="swal-promo-percent" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${promo && promo.discount_percent ? promo.discount_percent : ''}" placeholder="เช่น 15">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🏷️ รหัสส่วนลด (Promo Code) *</label>
+            <input id="swal-promo-code" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); text-transform: uppercase;" value="${promo ? promo.code : ''}" placeholder="เช่น ROOMIE2026">
           </div>
           <div>
-            <label style="font-weight: 600;">หรือ ส่วนลด (บาท)</label>
-            <input type="number" step="1" id="swal-promo-amount" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${promo && promo.discount_amount ? promo.discount_amount : ''}" placeholder="เช่น 100">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📝 คำอธิบายรายละเอียดโปรโมชั่น</label>
+            <input id="swal-promo-desc" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${promo && promo.description ? promo.description : ''}" placeholder="ส่วนลดพิเศษ 15% สำหรับทุกการจอง">
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600;">วันที่เริ่มใช้งาน *</label>
-            <input type="date" id="swal-promo-from" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${defaultFrom}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📊 ส่วนลด (%)</label>
+            <input type="number" step="0.1" id="swal-promo-percent" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${promo && promo.discount_percent ? promo.discount_percent : ''}" placeholder="เช่น 15">
           </div>
           <div>
-            <label style="font-weight: 600;">วันที่หมดอายุ *</label>
-            <input type="date" id="swal-promo-until" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${defaultUntil}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">💵 หรือ ส่วนลด (บาท)</label>
+            <input type="number" step="1" id="swal-promo-amount" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${promo && promo.discount_amount ? promo.discount_amount : ''}" placeholder="เช่น 100">
           </div>
         </div>
-        <div style="display: flex; gap: 1rem; align-items: center; background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px;">
-          <input type="checkbox" id="swal-promo-active" style="width: 18px; height: 18px;" ${!promo || promo.is_active ? 'checked' : ''}>
-          <label for="swal-promo-active" style="font-size: 0.88rem; cursor: pointer;">เปิดใช้งานโปรโมชั่นนี้ทันที (Is Active)</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📅 วันที่เริ่มใช้งาน *</label>
+            <input type="date" id="swal-promo-from" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${defaultFrom}">
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">⌛ วันที่หมดอายุ *</label>
+            <input type="date" id="swal-promo-until" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${defaultUntil}">
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center; background: var(--bg-tertiary); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+          <input type="checkbox" id="swal-promo-active" style="width: 18px; height: 18px; cursor: pointer;" ${!promo || promo.is_active ? 'checked' : ''}>
+          <label for="swal-promo-active" style="font-size: 0.9rem; cursor: pointer; color: var(--text-primary);">เปิดใช้งานโปรโมชั่นนี้ทันที (Is Active)</label>
         </div>
       </div>
     `,
@@ -1798,7 +1802,7 @@ async function showBookingDetailsModal(bookingId) {
 
   Swal.fire({
     title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
-    width: '650px',
+    width: '780px',
     html: `
       <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 10px;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
@@ -1851,39 +1855,39 @@ async function openEquipmentModal(eqId = null) {
 
   const { value: formValues } = await Swal.fire({
     title: eqId ? '✏️ แก้ไขอุปกรณ์เสริม' : '➕ เพิ่มอุปกรณ์เสริมใหม่',
-    width: '720px',
+    width: '780px',
     html: `
-      <div style="text-align: left; font-size: 0.95rem; padding: 0.5rem 0;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+      <div style="text-align: left; font-size: 0.95rem; padding: 0.25rem 0;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600; color: var(--text-primary);">⚙️ ชื่ออุปกรณ์เสริม *</label>
-            <input id="swal-eq-name" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.name : ''}" placeholder="เช่น Wireless Presenter Clicker">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">⚙️ ชื่ออุปกรณ์เสริม *</label>
+            <input id="swal-eq-name" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${eq ? eq.name : ''}" placeholder="เช่น Wireless Presenter Clicker">
           </div>
           <div>
-            <label style="font-weight: 600; color: var(--text-primary);">📝 รายละเอียดคำอธิบาย</label>
-            <input id="swal-eq-desc" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq && eq.description ? eq.description : ''}" placeholder="รายละเอียดอุปกรณ์...">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📝 รายละเอียดคำอธิบาย</label>
+            <input id="swal-eq-desc" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${eq && eq.description ? eq.description : ''}" placeholder="รายละเอียดอุปกรณ์...">
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600; color: var(--text-primary);">📦 จำนวนทั้งหมด *</label>
-            <input type="number" id="swal-eq-total-qty" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.total_quantity : 1}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📦 จำนวนทั้งหมด *</label>
+            <input type="number" id="swal-eq-total-qty" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${eq ? eq.total_quantity : 1}">
           </div>
           <div>
-            <label style="font-weight: 600; color: var(--text-primary);">✅ จำนวนคงเหลือพร้อมใช้งาน *</label>
-            <input type="number" id="swal-eq-avail-qty" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.available_quantity : 1}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">✅ จำนวนคงเหลือพร้อมใช้งาน *</label>
+            <input type="number" id="swal-eq-avail-qty" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${eq ? eq.available_quantity : 1}">
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
           <div>
-            <label style="font-weight: 600; color: var(--text-primary);">💰 ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
-            <input type="number" step="0.01" id="swal-eq-std-price" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.standard_price : 0}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">💰 ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-eq-std-price" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${eq ? eq.standard_price : 0}">
           </div>
           <div>
-            <label style="font-weight: 600; color: var(--text-primary);">💎 ราคาสมาชิก (บาท/ชม.) *</label>
-            <input type="number" step="0.01" id="swal-eq-mem-price" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.member_price : 0}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">💎 ราคาสมาชิก (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-eq-mem-price" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${eq ? eq.member_price : 0}">
           </div>
         </div>
       </div>
@@ -2078,43 +2082,43 @@ async function openUserModal(userId = null) {
 
   const { value: formValues } = await Swal.fire({
     title: userId ? '✏️ แก้ไขข้อมูลและสิทธิ์ผู้ใช้งาน' : '➕ เพิ่มผู้ใช้งานใหม่เข้าสู่ระบบ',
-    width: '680px',
+    width: '780px',
     html: `
-      <div style="text-align: left; font-size: 0.9rem;">
+      <div style="text-align: left; font-size: 0.95rem; padding: 0.25rem 0;">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">ชื่อ - นามสกุล *</label>
-            <input id="swal-user-name" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" value="${u && u.full_name ? u.full_name : ''}" placeholder="สมชาย สายมั่นคง">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">👤 ชื่อ - นามสกุล *</label>
+            <input id="swal-user-name" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${u && u.full_name ? u.full_name : ''}" placeholder="สมชาย สายมั่นคง">
           </div>
           <div>
-            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">อีเมล (Email) *</label>
-            <input type="email" id="swal-user-email" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" value="${u ? u.email : ''}" placeholder="user@example.com">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📧 อีเมล (Email) *</label>
+            <input type="email" id="swal-user-email" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${u ? u.email : ''}" placeholder="user@example.com">
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">เบอร์โทรศัพท์</label>
-            <input type="tel" id="swal-user-phone" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" value="${u && u.phone ? u.phone : ''}" placeholder="081-234-5678">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">📞 เบอร์โทรศัพท์</label>
+            <input type="tel" id="swal-user-phone" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" value="${u && u.phone ? u.phone : ''}" placeholder="081-234-5678">
           </div>
           <div>
-            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">รหัสผ่าน ${userId ? '(เว้นว่างไว้หากไม่ต้องการเปลี่ยน)' : '*'}</label>
-            <input type="password" id="swal-user-password" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" placeholder="${userId ? '******' : 'กำหนดรหัสผ่าน'}">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🔑 รหัสผ่าน ${userId ? '(เว้นว่างไว้หากไม่เปลี่ยน)' : '*'}</label>
+            <input type="password" id="swal-user-password" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;" placeholder="${userId ? '******' : 'กำหนดรหัสผ่าน'}">
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
           <div>
-            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">สิทธิ์การใช้งานระบบ (Role) *</label>
-            <select id="swal-user-role" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px; background: var(--bg-tertiary); color: var(--text-main);">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🛡️ สิทธิ์การใช้งานระบบ (Role) *</label>
+            <select id="swal-user-role" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary); outline: none;">
               <option value="MEMBER" ${!u || u.role === 'MEMBER' ? 'selected' : ''}>MEMBER - สมาชิกผู้ขอจองทั่วไป</option>
               <option value="APPROVER" ${u && u.role === 'APPROVER' ? 'selected' : ''}>APPROVER - ผู้อนุมัติการจอง</option>
               <option value="ADMIN" ${u && u.role === 'ADMIN' ? 'selected' : ''}>ADMIN - ผู้ดูแลระบบสูงสุด</option>
             </select>
           </div>
           <div>
-            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">สถานะบัญชี (Status)</label>
-            <div style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; background: var(--bg-tertiary); border-radius: 8px; margin-top: 0.1rem;">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">⚡ สถานะบัญชี (Status)</label>
+            <div style="display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0.85rem; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 0.1rem;">
               <input type="checkbox" id="swal-user-active" style="width: 18px; height: 18px; cursor: pointer;" ${!u || u.is_active ? 'checked' : ''}>
-              <label for="swal-user-active" style="cursor: pointer; font-size: 0.9rem;">เปิดใช้งานบัญชีนี้ (Active)</label>
+              <label for="swal-user-active" style="cursor: pointer; font-size: 0.9rem; color: var(--text-primary);">เปิดใช้งานบัญชีนี้ (Active)</label>
             </div>
           </div>
         </div>
