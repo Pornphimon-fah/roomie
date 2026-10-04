@@ -1087,7 +1087,7 @@ async function loadAdminDashboard() {
 }
 
 async function switchAdminTab(adminTab) {
-  const validTabs = ['approvals', 'payments', 'all-bookings', 'equipments'];
+  const validTabs = ['approvals', 'payments', 'all-bookings', 'rooms', 'equipments', 'promotions'];
   if (!validTabs.includes(adminTab)) adminTab = 'approvals';
 
   localStorage.setItem('roomie_admin_subtab', adminTab);
@@ -1115,8 +1115,14 @@ async function switchAdminTab(adminTab) {
     } else if (adminTab === 'all-bookings') {
       const res = await fetch(`${API_BASE_URL}/bookings`, { headers });
       adminTableState.data = await res.json();
+    } else if (adminTab === 'rooms') {
+      const res = await fetch(`${API_BASE_URL}/rooms`, { headers });
+      adminTableState.data = await res.json();
     } else if (adminTab === 'equipments') {
       const res = await fetch(`${API_BASE_URL}/equipments`, { headers });
+      adminTableState.data = await res.json();
+    } else if (adminTab === 'promotions') {
+      const res = await fetch(`${API_BASE_URL}/promotions`, { headers });
       adminTableState.data = await res.json();
     }
   } catch (err) {
@@ -1266,6 +1272,54 @@ function renderAdminTabContent() {
         </table>
       </div>
     `;
+  } else if (tab === 'rooms') {
+    content.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h3><i class="fa-solid fa-door-open"></i> จัดการห้องประชุม (${items.length})</h3>
+        <button class="btn btn-primary btn-sm" onclick="openRoomModal()">
+          <i class="fa-solid fa-plus"></i> เพิ่มห้องประชุมใหม่
+        </button>
+      </div>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              ${getSortHeader('ID', 'id')}
+              ${getSortHeader('ห้องประชุม', 'name')}
+              ${getSortHeader('สถานที่ / ชั้น', 'location')}
+              ${getSortHeader('ความจุ (คน)', 'capacity')}
+              ${getSortHeader('ราคาบุคคลทั่วไป (฿/ชม.)', 'standard_price')}
+              ${getSortHeader('ราคาสมาชิก (฿/ชม.)', 'member_price')}
+              <th>เงื่อนไขอนุมัติ</th>
+              <th>เครื่องมือจัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding: 2rem;">ไม่มีรายการห้องประชุม</td></tr>' : items.map(r => `
+              <tr>
+                <td>#${r.id}</td>
+                <td><strong>${r.name}</strong></td>
+                <td>${r.location}</td>
+                <td><span class="badge badge-approved">${r.capacity} คน</span></td>
+                <td>฿${parseFloat(r.standard_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td><strong style="color:var(--accent-primary);">฿${parseFloat(r.member_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+                <td>${r.requires_approval ? '<span class="badge badge-pending">ต้องรออนุมัติ</span>' : '<span class="badge badge-approved">อนุมัติอัตโนมัติ</span>'}</td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem;">
+                    <button class="btn btn-secondary btn-sm" onclick="openRoomModal(${r.id})">
+                      <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteRoom(${r.id}, '${r.name.replace(/'/g, "\\'")}')">
+                      <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
   } else if (tab === 'equipments') {
     content.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
@@ -1312,6 +1366,330 @@ function renderAdminTabContent() {
         </table>
       </div>
     `;
+  } else if (tab === 'promotions') {
+    content.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h3><i class="fa-solid fa-tags"></i> จัดการส่วนลด & โปรโมชั่น (${items.length})</h3>
+        <button class="btn btn-primary btn-sm" onclick="openPromoModal()">
+          <i class="fa-solid fa-plus"></i> เพิ่มโปรโมชั่นใหม่
+        </button>
+      </div>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              ${getSortHeader('ID', 'id')}
+              ${getSortHeader('Promo Code', 'code')}
+              ${getSortHeader('คำอธิบาย', 'description')}
+              <th>ส่วนลด</th>
+              ${getSortHeader('เริ่มใช้งาน', 'valid_from')}
+              ${getSortHeader('หมดอายุ', 'valid_until')}
+              <th>สถานะ</th>
+              <th>เครื่องมือจัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding: 2rem;">ไม่มีรายการโปรโมชั่น</td></tr>' : items.map(p => `
+              <tr>
+                <td>#${p.id}</td>
+                <td><strong style="color:var(--accent-primary); font-family:monospace; font-size:1.05rem;">${p.code}</strong></td>
+                <td>${p.description || '-'}</td>
+                <td><strong>${p.discount_percent ? `${p.discount_percent}%` : `฿${parseFloat(p.discount_amount || 0).toLocaleString()}`}</strong></td>
+                <td>${formatDateTime(p.valid_from)}</td>
+                <td>${formatDateTime(p.valid_until)}</td>
+                <td>${p.is_active ? '<span class="badge badge-approved">เปิดใช้งาน (Active)</span>' : '<span class="badge badge-noshow">ปิดใช้งาน</span>'}</td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem;">
+                    <button class="btn btn-secondary btn-sm" onclick="openPromoModal(${p.id})">
+                      <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeletePromo(${p.id}, '${p.code}')">
+                      <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+
+// --- Room Management Modal Functions ---
+async function openRoomModal(roomId = null) {
+  let room = null;
+  if (roomId) {
+    room = (adminTableState.data || []).find(item => item.id === roomId);
+  }
+
+  const { value: formValues } = await Swal.fire({
+    title: roomId ? '✏️ แก้ไขข้อมูลห้องประชุม' : '➕ เพิ่มห้องประชุมใหม่',
+    width: '600px',
+    html: `
+      <div style="text-align: left; font-size: 0.9rem;">
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">ชื่อห้องประชุม *</label>
+          <input id="swal-room-name" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.name : ''}" placeholder="เช่น Grand Ballroom A">
+        </div>
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600;">สถานที่ / ชั้น *</label>
+            <input id="swal-room-location" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.location : ''}" placeholder="เช่น Floor 3, Zone A">
+          </div>
+          <div>
+            <label style="font-weight: 600;">ความจุผู้เข้าร่วม (คน) *</label>
+            <input type="number" id="swal-room-capacity" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.capacity : 10}">
+          </div>
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">URL รูปภาพห้องประชุม</label>
+          <input id="swal-room-image" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room && room.image_url ? room.image_url : ''}" placeholder="https://images.unsplash.com/...">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600;">ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-room-std-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.standard_price : 300}">
+          </div>
+          <div>
+            <label style="font-weight: 600;">ราคาสมาชิก (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-room-mem-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${room ? room.member_price : 250}">
+          </div>
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">รายละเอียดห้องประชุม</label>
+          <textarea id="swal-room-desc" class="swal2-textarea" style="width: 100%; margin-top: 0.25rem; height: 70px;" placeholder="สิ่งอำนวยความสะดวก รายละเอียดห้อง...">${room && room.description ? room.description : ''}</textarea>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center; background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px;">
+          <input type="checkbox" id="swal-room-approval" style="width: 18px; height: 18px;" ${!room || room.requires_approval ? 'checked' : ''}>
+          <label for="swal-room-approval" style="font-size: 0.88rem; cursor: pointer;">ต้องรอการอนุมัติการจองจากเจ้าหน้าที่ (Requires Approval)</label>
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: roomId ? 'บันทึกการแก้ไข' : 'เพิ่มห้องประชุม',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#10B981',
+    preConfirm: () => {
+      const name = document.getElementById('swal-room-name').value.trim();
+      const location = document.getElementById('swal-room-location').value.trim();
+      if (!name || !location) {
+        Swal.showValidationMessage('กรุณากรอกชื่อห้องประชุมและสถานที่ตั้ง');
+        return false;
+      }
+      return {
+        name: name,
+        location: location,
+        capacity: parseInt(document.getElementById('swal-room-capacity').value) || 10,
+        image_url: document.getElementById('swal-room-image').value.trim() || null,
+        description: document.getElementById('swal-room-desc').value.trim() || null,
+        standard_price: parseFloat(document.getElementById('swal-room-std-price').value) || 0,
+        member_price: parseFloat(document.getElementById('swal-room-mem-price').value) || 0,
+        requires_approval: document.getElementById('swal-room-approval').checked
+      };
+    }
+  });
+
+  if (!formValues) return;
+
+  try {
+    const url = roomId ? `${API_BASE_URL}/rooms/${roomId}` : `${API_BASE_URL}/rooms`;
+    const method = roomId ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      },
+      body: JSON.stringify(formValues)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Save room failed');
+
+    Swal.fire({
+      icon: 'success',
+      title: roomId ? 'แก้ไขข้อมูลห้องประชุมสำเร็จ!' : 'เพิ่มห้องประชุมสำเร็จ!',
+      timer: 1800,
+      showConfirmButton: false
+    });
+    fetchRooms();
+    loadAdminDashboard();
+  } catch (err) {
+    Swal.fire('ทำรายการไม่สำเร็จ', err.message, 'error');
+  }
+}
+
+async function confirmDeleteRoom(roomId, roomName) {
+  const result = await Swal.fire({
+    title: `ลบห้องประชุม "${roomName}"?`,
+    text: 'การลบห้องประชุมจะทำให้ไม่สามารถค้นหาหรือจองห้องนี้ได้อีก แน่ใจหรือไม่?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ลบห้องประชุม',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#EF4444'
+  });
+  if (!result.isConfirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/rooms/${roomId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (!res.ok) throw new Error('Delete failed');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'ลบห้องประชุมเรียบร้อยแล้ว',
+      timer: 1500,
+      showConfirmButton: false
+    });
+    fetchRooms();
+    loadAdminDashboard();
+  } catch (err) {
+    Swal.fire('ไม่สามารถลบได้', err.message, 'error');
+  }
+}
+
+// --- Promotion Management Modal Functions ---
+async function openPromoModal(promoId = null) {
+  let promo = null;
+  if (promoId) {
+    promo = (adminTableState.data || []).find(item => item.id === promoId);
+  }
+
+  const defaultFrom = promo ? promo.valid_from.substring(0, 10) : new Date().toISOString().substring(0, 10);
+  const defaultUntil = promo ? promo.valid_until.substring(0, 10) : new Date(Date.now() + 30*86400000).toISOString().substring(0, 10);
+
+  const { value: formValues } = await Swal.fire({
+    title: promoId ? '✏️ แก้ไขโค้ดโปรโมชั่น' : '➕ เพิ่มโค้ดส่วนลด/โปรโมชั่นใหม่',
+    width: '580px',
+    html: `
+      <div style="text-align: left; font-size: 0.9rem;">
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">รหัสส่วนลด (Promo Code) *</label>
+          <input id="swal-promo-code" class="swal2-input" style="width: 100%; margin-top: 0.25rem; text-transform: uppercase;" value="${promo ? promo.code : ''}" placeholder="เช่น ROOMIE2026">
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">คำอธิบายรายละเอียดโปรโมชั่น</label>
+          <input id="swal-promo-desc" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${promo && promo.description ? promo.description : ''}" placeholder="ส่วนลดพิเศษ 15% สำหรับทุกการจอง">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600;">ส่วนลด (%)</label>
+            <input type="number" step="0.1" id="swal-promo-percent" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${promo && promo.discount_percent ? promo.discount_percent : ''}" placeholder="เช่น 15">
+          </div>
+          <div>
+            <label style="font-weight: 600;">หรือ ส่วนลด (บาท)</label>
+            <input type="number" step="1" id="swal-promo-amount" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${promo && promo.discount_amount ? promo.discount_amount : ''}" placeholder="เช่น 100">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600;">วันที่เริ่มใช้งาน *</label>
+            <input type="date" id="swal-promo-from" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${defaultFrom}">
+          </div>
+          <div>
+            <label style="font-weight: 600;">วันที่หมดอายุ *</label>
+            <input type="date" id="swal-promo-until" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${defaultUntil}">
+          </div>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center; background: var(--bg-tertiary); padding: 0.75rem; border-radius: 8px;">
+          <input type="checkbox" id="swal-promo-active" style="width: 18px; height: 18px;" ${!promo || promo.is_active ? 'checked' : ''}>
+          <label for="swal-promo-active" style="font-size: 0.88rem; cursor: pointer;">เปิดใช้งานโปรโมชั่นนี้ทันที (Is Active)</label>
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: promoId ? 'บันทึกการแก้ไข' : 'เพิ่มโปรโมชั่น',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#10B981',
+    preConfirm: () => {
+      const code = document.getElementById('swal-promo-code').value.trim().toUpperCase();
+      const percentVal = parseFloat(document.getElementById('swal-promo-percent').value);
+      const amountVal = parseFloat(document.getElementById('swal-promo-amount').value);
+      const fromVal = document.getElementById('swal-promo-from').value;
+      const untilVal = document.getElementById('swal-promo-until').value;
+
+      if (!code) {
+        Swal.showValidationMessage('กรุณากรอกรหัสส่วนลด (Promo Code)');
+        return false;
+      }
+      if (isNaN(percentVal) && isNaN(amountVal)) {
+        Swal.showValidationMessage('กรุณาระบุส่วนลดเป็น % หรือเป็น จำนวนบาท อย่างน้อย 1 อย่าง');
+        return false;
+      }
+      return {
+        code: code,
+        description: document.getElementById('swal-promo-desc').value.trim() || null,
+        discount_percent: !isNaN(percentVal) ? percentVal : null,
+        discount_amount: !isNaN(amountVal) ? amountVal : null,
+        valid_from: new Date(fromVal).toISOString(),
+        valid_until: new Date(untilVal + 'T23:59:59').toISOString(),
+        is_active: document.getElementById('swal-promo-active').checked
+      };
+    }
+  });
+
+  if (!formValues) return;
+
+  try {
+    const url = promoId ? `${API_BASE_URL}/promotions/${promoId}` : `${API_BASE_URL}/promotions`;
+    const method = promoId ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      },
+      body: JSON.stringify(formValues)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Save promotion failed');
+
+    Swal.fire({
+      icon: 'success',
+      title: promoId ? 'แก้ไขโปรโมชั่นสำเร็จ!' : 'เพิ่มโปรโมชั่นสำเร็จ!',
+      timer: 1800,
+      showConfirmButton: false
+    });
+    loadAdminDashboard();
+  } catch (err) {
+    Swal.fire('ทำรายการไม่สำเร็จ', err.message, 'error');
+  }
+}
+
+async function confirmDeletePromo(promoId, promoCode) {
+  const result = await Swal.fire({
+    title: `ลบโปรโมชั่น "${promoCode}"?`,
+    text: 'การลบรหัสส่วนลดนี้ทำให้ผู้ใช้งานไม่สามารถกรอกใช้ส่วนลดนี้ได้อีก คุณแน่ใจหรือไม่?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ลบโปรโมชั่น',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#EF4444'
+  });
+  if (!result.isConfirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/promotions/${promoId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (!res.ok) throw new Error('Delete failed');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'ลบโค้ดโปรโมชั่นเรียบร้อยแล้ว',
+      timer: 1500,
+      showConfirmButton: false
+    });
+    loadAdminDashboard();
+  } catch (err) {
+    Swal.fire('ไม่สามารถลบได้', err.message, 'error');
   }
 }
 
