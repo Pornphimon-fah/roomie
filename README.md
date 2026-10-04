@@ -24,82 +24,97 @@
 
 ## 🛠️ สิ่งที่ต้องมีก่อนติดตั้ง (Prerequisites)
 
-เพื่อให้สามารถรันระบบได้ คุณต้องมีโปรแกรมดังต่อไปนี้ติดตั้งอยู่ในเครื่อง:
-
-1. **Docker Desktop** (สำหรับรันฐานข้อมูล PostgreSQL): [ดาวน์โหลด Docker](https://www.docker.com/products/docker-desktop/)
+1. **Docker Desktop** (สำหรับรันฐานข้อมูล PostgreSQL): [ดาวน์โหลด Docker Desktop](https://www.docker.com/products/docker-desktop/)
 2. **Python 3.10 ขึ้นไป** (สำหรับรันระบบหลังบ้าน FastAPI): [ดาวน์โหลด Python](https://www.python.org/downloads/)
-3. **Web Browser** (เช่น Google Chrome, Microsoft Edge, Safari)
+3. **Web Browser** (เช่น Google Chrome, Microsoft Edge, Safari, Firefox)
 
 ---
 
-## 🚀 ขั้นตอนการเปิดใช้งานระบบ (Step-by-Step Guide)
+## 🚀 ขั้นตอนการเปิดใช้งานสำหรับผู้พัฒนา (Run Dev Guide)
 
-ทำตาม 3 ขั้นตอนง่ายๆ ด้านล่างนี้เพื่อรันโปรเจกต์:
+โปรดเลือกดูขั้นตอนตามระบบปฏิบัติการของคุณ (macOS หรือ Windows):
 
-### ขั้นตอนที่ 1: เปิดใช้งานฐานข้อมูล (PostgreSQL Database)
+### 🍎 1. ขั้นตอนการรันโปรเจกต์สำหรับ macOS / Linux
 
-1. เปิดโปรแกรม **Docker Desktop** ให้พร้อมใช้งาน
-2. เปิดโปรแกรม **Terminal** (สำหรับ macOS) หรือ **Command Prompt / PowerShell** (สำหรับ Windows)
-3. คัดลอกคำสั่งด้านล่างนี้ไปวางแล้วกด **Enter**:
-
+#### Step 1: เปิดใช้งาน PostgreSQL Database (ผ่าน Docker)
+เปิดโปรแกรม **Terminal** แล้วคัดลอกคำสั่งด้านล่างไปวาง:
 ```bash
 docker run -d --name roomie-db -p 5432:5432 -e POSTGRES_DB=roomiedb -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgrespassword postgres:15-alpine
 ```
-*(คำสั่งนี้จะสร้างและเริ่มการทำงานของฐานข้อมูล PostgreSQL ให้อัตโนมัติ)*
+
+#### Step 2: รันระบบหลังบ้าน (Backend Server - FastAPI)
+ในหน้าต่าง **Terminal** เดิม รันคำสั่งทีละบรรทัด:
+```bash
+# 1. เข้าสู่โฟลเดอร์ backend
+cd backend
+
+# 2. สร้างและเปิดใช้งาน Virtual Environment
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. ติดตั้งไลบรารีทั้งหมด
+pip install -r requirements.txt
+
+# 4. สร้างตารางและใส่ข้อมูลเริ่มต้น (Seed Data)
+python3 -m app.init_db
+
+# 5. รัน Backend Server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+*(ระบบหลังบ้านจะรันที่: **`http://localhost:8000`** | ดูเอกสาร API ได้ที่ `http://localhost:8000/docs`)*
+
+#### Step 3: รันระบบหน้าบ้าน (Frontend Web Server)
+เปิดหน้าต่าง **Terminal ใหม่** (แยกกับระบบหลังบ้าน) แล้วรันคำสั่ง:
+```bash
+# 1. เข้าสู่โฟลเดอร์ frontend
+cd frontend
+
+# 2. รัน Web Server บนพอร์ต 5500
+python3 -m http.server 5500
+```
+👉 เปิดโปรแกรม Web Browser เข้าไปที่: **`http://localhost:5500`**
 
 ---
 
-### ขั้นตอนที่ 2: รันระบบหลังบ้าน (Backend Server - FastAPI)
+### 🪟 2. ขั้นตอนการรันโปรเจกต์สำหรับ Windows
 
-1. ในหน้าต่าง Terminal เดิม ให้เข้าไปที่โฟลเดอร์ `backend`:
-   ```bash
-   cd /Users/fahsai/Roomie/backend
-   ```
+#### Step 1: เปิดใช้งาน PostgreSQL Database (ผ่าน Docker)
+เปิดโปรแกรม **Command Prompt (cmd)** หรือ **PowerShell** แล้วคัดลอกคำสั่งด้านล่างไปวาง:
+```cmd
+docker run -d --name roomie-db -p 5432:5432 -e POSTGRES_DB=roomiedb -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgrespassword postgres:15-alpine
+```
 
-2. สร้างและเปิดใช้งานสภาพแวดล้อมเสมือน (Virtual Environment):
-   * **สำหรับ macOS / Linux**:
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
-   * **สำหรับ Windows**:
-     ```cmd
-     python -m venv venv
-     venv\Scripts\activate
-     ```
+#### Step 2: รันระบบหลังบ้าน (Backend Server - FastAPI)
+ในหน้าต่าง **Command Prompt / PowerShell** เดิม รันคำสั่งทีละบรรทัด:
+```cmd
+:: 1. เข้าสู่โฟลเดอร์ backend
+cd backend
 
-3. ติดตั้งไลบรารีที่จำเป็นทั้งหมด:
-   ```bash
-   pip install -r requirements.txt
-   ```
+:: 2. สร้างและเปิดใช้งาน Virtual Environment
+python -m venv venv
+venv\Scripts\activate
 
-4. สร้างตารางและข้อมูลเริ่มต้นในฐานข้อมูล (Seed Data):
-   ```bash
-   python -m app.init_db
-   ```
+:: 3. ติดตั้งไลบรารีทั้งหมด
+pip install -r requirements.txt
 
-5. เริ่มการทำงานของเซิร์ฟเวอร์หลังบ้าน:
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-   *หลังบ้านจะเริ่มรันที่: **`http://localhost:8000`** (สามารถเข้าดูเอกสาร API ได้ที่ `http://localhost:8000/docs`)*
+:: 4. สร้างตารางและใส่ข้อมูลเริ่มต้น (Seed Data)
+python -m app.init_db
 
----
+:: 5. รัน Backend Server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+*(ระบบหลังบ้านจะรันที่: **`http://localhost:8000`** | ดูเอกสาร API ได้ที่ `http://localhost:8000/docs`)*
 
-### ขั้นตอนที่ 3: รันระบบหน้าบ้าน (Frontend Web Interface)
+#### Step 3: รันระบบหน้าบ้าน (Frontend Web Server)
+เปิดหน้าต่าง **Command Prompt / PowerShell ใหม่** (แยกกับระบบหลังบ้าน) แล้วรันคำสั่ง:
+```cmd
+:: 1. เข้าสู่โฟลเดอร์ frontend
+cd frontend
 
-1. เปิดหน้าต่าง **Terminal ใหม่** (แยกจากหลังบ้าน) แล้วเข้าไปที่โฟลเดอร์ `frontend`:
-   ```bash
-   cd /Users/fahsai/Roomie/frontend
-   ```
-
-2. รันเซิร์ฟเวอร์หน้าบ้านด้วยคำสั่ง:
-   ```bash
-   python3 -m http.server 5500
-   ```
-
-3. เปิดโปรแกรม Web Browser เข้าไปที่ที่อยู่:
-   👉 **`http://localhost:5500`**
+:: 2. รัน Web Server บนพอร์ต 5500
+python -m http.server 5500
+```
+👉 เปิดโปรแกรม Web Browser เข้าไปที่: **`http://localhost:5500`**
 
 ---
 
