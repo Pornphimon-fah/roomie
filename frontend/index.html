@@ -213,10 +213,10 @@
 
       <!-- Admin Management Tabs -->
       <div class="tab-container">
-        <button class="tab-btn active" onclick="switchAdminTab('approvals')">คำขอรออนุมัติการจอง</button>
-        <button class="tab-btn" onclick="switchAdminTab('payments')">ตรวจสอบสลิปชำระเงิน</button>
-        <button class="tab-btn" onclick="switchAdminTab('all-bookings')">รายการจองทั้งหมด</button>
-        <button class="tab-btn" onclick="switchAdminTab('equipments')">จัดการอุปกรณ์เสริม</button>
+        <button class="tab-btn" id="admin-tab-approvals" onclick="switchAdminTab('approvals')"><i class="fa-solid fa-clock"></i> คำขอรออนุมัติการจอง</button>
+        <button class="tab-btn" id="admin-tab-payments" onclick="switchAdminTab('payments')"><i class="fa-solid fa-receipt"></i> ตรวจสอบสลิปชำระเงิน</button>
+        <button class="tab-btn" id="admin-tab-all-bookings" onclick="switchAdminTab('all-bookings')"><i class="fa-solid fa-list-check"></i> รายการจองทั้งหมด</button>
+        <button class="tab-btn" id="admin-tab-equipments" onclick="switchAdminTab('equipments')"><i class="fa-solid fa-boxes-packing"></i> จัดการอุปกรณ์เสริม</button>
       </div>
 
       <div id="admin-tab-content">

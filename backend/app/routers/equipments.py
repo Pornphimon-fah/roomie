@@ -60,7 +60,7 @@ async def update_equipment(
 async def delete_equipment(
     equipment_id: int,
     db: AsyncSession = Depends(get_db),
-    admin = Depends(get_current_admin)
+    approver = Depends(get_current_approver)
 ):
     stmt = select(Equipment).where(Equipment.id == equipment_id)
     res = await db.execute(stmt)

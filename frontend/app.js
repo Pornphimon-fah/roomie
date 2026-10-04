@@ -937,8 +937,33 @@ async function lookupBookingByCode() {
   }
 }
 
+// --- Helper Functions for Badges & Statuses ---
+function formatBookingStatusBadge(status) {
+  const statusMap = {
+    'PENDING_APPROVAL': { label: 'รออนุมัติ', color: '#D97706', bg: '#FEF3C7', icon: 'fa-clock' },
+    'APPROVED': { label: 'อนุมัติแล้ว', color: '#059669', bg: '#D1FAE5', icon: 'fa-circle-check' },
+    'REJECTED': { label: 'ไม่อนุมัติ', color: '#DC2626', bg: '#FEE2E2', icon: 'fa-circle-xmark' },
+    'CANCELLED': { label: 'ยกเลิกแล้ว', color: '#4B5563', bg: '#F3F4F6', icon: 'fa-ban' },
+    'CHECKED_IN': { label: 'Check-in แล้ว', color: '#2563EB', bg: '#DBEAFE', icon: 'fa-user-check' },
+    'NO_SHOW': { label: 'ไม่เข้าใช้งาน', color: '#6B7280', bg: '#F3F4F6', icon: 'fa-user-slash' }
+  };
+  const info = statusMap[status] || { label: status, color: '#4B5563', bg: '#F3F4F6', icon: 'fa-tag' };
+  return `<span class="badge-pill" style="background:${info.bg}; color:${info.color}; border: 1px solid ${info.color}40;"><i class="fa-solid ${info.icon}"></i> ${info.label}</span>`;
+}
+
+function formatPaymentStatusBadge(status) {
+  const statusMap = {
+    'UNPAID': { label: 'ยังไม่ชำระเงิน', color: '#DC2626', bg: '#FEE2E2', icon: 'fa-circle-dollar-to-slot' },
+    'PENDING_VERIFICATION': { label: 'รอตรวจสลิป', color: '#D97706', bg: '#FEF3C7', icon: 'fa-receipt' },
+    'PAID': { label: 'ชำระเงินแล้ว', color: '#059669', bg: '#D1FAE5', icon: 'fa-money-bill-wave' },
+    'REFUNDED': { label: 'คืนเงินแล้ว', color: '#7C3AED', bg: '#EDE9FE', icon: 'fa-rotate-left' }
+  };
+  const info = statusMap[status] || { label: status, color: '#4B5563', bg: '#F3F4F6', icon: 'fa-credit-card' };
+  return `<span class="badge-pill" style="background:${info.bg}; color:${info.color}; border: 1px solid ${info.color}40;"><i class="fa-solid ${info.icon}"></i> ${info.label}</span>`;
+}
+
 function renderBookingsList(bookings, container) {
-  if (bookings.length === 0) {
+  if (!bookings || bookings.length === 0) {
     container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--text-muted);">ไม่พบรายการจอง</div>`;
     return;
   }
@@ -948,7 +973,7 @@ function renderBookingsList(bookings, container) {
       <table class="custom-table">
         <thead>
           <tr>
-            <th>Booking Code</th>
+            <th>Code</th>
             <th>ห้องประชุม</th>
             <th>ผู้จอง / สิทธิ์</th>
             <th>วันและเวลา</th>
@@ -965,14 +990,17 @@ function renderBookingsList(bookings, container) {
               <td>${b.room_name || b.room_id}</td>
               <td>${b.booking_mode === 'MEMBER' ? 'สมาชิก' : b.guest_name + ' (Guest)'}</td>
               <td>${formatDateTime(b.start_time)} - ${formatTime(b.end_time)}</td>
-              <td><strong>฿${parseFloat(b.total_price).toLocaleString()}</strong></td>
-              <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
-              <td><span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></td>
+              <td><strong>฿${parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+              <td>${formatBookingStatusBadge(b.status)}</td>
+              <td>${formatPaymentStatusBadge(b.payment_status)}</td>
               <td>
                 <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                  <button class="btn btn-secondary btn-sm" onclick="showBookingDetailsModal(${b.id})">
+                    <i class="fa-solid fa-eye"></i> รายละเอียด
+                  </button>
                   ${(b.payment_status === 'UNPAID' || b.payment_status === 'REJECTED') ? `
                     <button class="btn btn-primary btn-sm" onclick="openStandaloneSlipModal(${b.id}, '${b.booking_code}', ${b.total_price})">
-                      <i class="fa-solid fa-credit-card"></i> แนบสลิปชำระเงิน
+                      <i class="fa-solid fa-credit-card"></i> แนบสลิป
                     </button>
                   ` : ''}
                   ${b.status === 'APPROVED' ? `
@@ -995,60 +1023,45 @@ function renderBookingsList(bookings, container) {
   `;
 }
 
-async function performCheckin(bookingId) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/checkin`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Check-in failed');
+// --- Admin Table State & Column Sorting ---
+let adminTableState = {
+  tab: 'approvals',
+  field: null,
+  asc: true,
+  data: []
+};
 
-    Swal.fire({
-      icon: 'success',
-      title: 'Check-in สำเร็จ!',
-      text: 'ยินดีต้อนรับเข้าใช้งานห้องประชุม',
-      confirmButtonColor: '#10B981'
-    });
-    fetchMyBookings();
-  } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Check-in ไม่สำเร็จ',
-      text: err.message,
-      confirmButtonColor: '#EF4444'
-    });
+function sortAdminData(field) {
+  if (adminTableState.field === field) {
+    adminTableState.asc = !adminTableState.asc;
+  } else {
+    adminTableState.field = field;
+    adminTableState.asc = true;
   }
+
+  const mult = adminTableState.asc ? 1 : -1;
+  adminTableState.data.sort((a, b) => {
+    let valA = a[field];
+    let valB = b[field];
+    if (valA === null || valA === undefined) valA = '';
+    if (valB === null || valB === undefined) valB = '';
+    if (typeof valA === 'number' || !isNaN(valA)) {
+      return (Number(valA) - Number(valB)) * mult;
+    }
+    return String(valA).localeCompare(String(valB), 'th') * mult;
+  });
+
+  renderAdminTabContent();
 }
 
-async function performCancel(bookingId) {
-  const result = await Swal.fire({
-    title: 'ยืนยันยกเลิกการจอง?',
-    text: 'สามารถยกเลิกและขอคืนเงินได้ล่วงหน้าอย่างน้อย 3 วันก่อนวันประชุม',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'ยืนยันยกเลิก',
-    cancelButtonText: 'ย้อนกลับ',
-    confirmButtonColor: '#EF4444'
-  });
-  if (!result.isConfirmed) return;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Cancellation failed');
-
-    Swal.fire({
-      icon: 'success',
-      title: 'ยกเลิกการจองเรียบร้อยแล้ว',
-      confirmButtonColor: '#10B981'
-    });
-    fetchMyBookings();
-  } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: 'ไม่สามารถยกเลิกการจองได้',
-      text: err.message,
-      confirmButtonColor: '#EF4444'
-    });
+function getSortHeader(title, field) {
+  let icon = '<i class="fa-solid fa-sort" style="opacity:0.3; margin-left:4px;"></i>';
+  if (adminTableState.field === field) {
+    icon = adminTableState.asc
+      ? '<i class="fa-solid fa-sort-up" style="color:var(--accent-primary); margin-left:4px;"></i>'
+      : '<i class="fa-solid fa-sort-down" style="color:var(--accent-primary); margin-left:4px;"></i>';
   }
+  return `<th class="sortable" onclick="sortAdminData('${field}')" title="คลิกเพื่อจัดเรียง (0-9, 9-0)">${title} ${icon}</th>`;
 }
 
 // --- Admin Dashboard ---
@@ -1066,49 +1079,92 @@ async function loadAdminDashboard() {
     document.getElementById('kpi-pending-approvals').innerText = stats.pending_approvals;
     document.getElementById('kpi-occupancy-rate').innerText = `${stats.occupancy_rate_percent}%`;
 
-    switchAdminTab('approvals');
+    const savedSubTab = localStorage.getItem('roomie_admin_subtab') || 'approvals';
+    await switchAdminTab(savedSubTab);
   } catch (err) {
     console.error("Admin dashboard load error:", err);
   }
 }
 
 async function switchAdminTab(adminTab) {
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
+  const validTabs = ['approvals', 'payments', 'all-bookings', 'equipments'];
+  if (!validTabs.includes(adminTab)) adminTab = 'approvals';
+
+  localStorage.setItem('roomie_admin_subtab', adminTab);
+  adminTableState.tab = adminTab;
+
+  document.querySelectorAll('.tab-container .tab-btn').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById(`admin-tab-${adminTab}`);
+  if (activeBtn) activeBtn.classList.add('active');
 
   const content = document.getElementById('admin-tab-content');
+  if (content) {
+    content.innerHTML = `<div style="text-align:center; padding: 2.5rem; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><br><span style="margin-top:0.5rem; display:inline-block;">กำลังโหลดข้อมูล...</span></div>`;
+  }
+
   const headers = { 'Authorization': `Bearer ${state.token}` };
 
-  if (adminTab === 'approvals') {
-    const res = await fetch(`${API_BASE_URL}/bookings?status_filter=PENDING_APPROVAL`, { headers });
-    const bookings = await res.json();
+  try {
+    if (adminTab === 'approvals') {
+      const res = await fetch(`${API_BASE_URL}/bookings?status_filter=PENDING_APPROVAL`, { headers });
+      adminTableState.data = await res.json();
+    } else if (adminTab === 'payments') {
+      const res = await fetch(`${API_BASE_URL}/bookings`, { headers });
+      const all = await res.json();
+      adminTableState.data = all.filter(b => b.payment_status === 'PENDING_VERIFICATION');
+    } else if (adminTab === 'all-bookings') {
+      const res = await fetch(`${API_BASE_URL}/bookings`, { headers });
+      adminTableState.data = await res.json();
+    } else if (adminTab === 'equipments') {
+      const res = await fetch(`${API_BASE_URL}/equipments`, { headers });
+      adminTableState.data = await res.json();
+    }
+  } catch (err) {
+    console.error("Error fetching admin tab data:", err);
+    adminTableState.data = [];
+  }
 
+  renderAdminTabContent();
+}
+
+function renderAdminTabContent() {
+  const content = document.getElementById('admin-tab-content');
+  if (!content) return;
+  const tab = adminTableState.tab;
+  const items = adminTableState.data || [];
+
+  if (tab === 'approvals') {
     content.innerHTML = `
-      <h3>คำขอรออนุมัติการจอง (${bookings.length})</h3>
+      <h3 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-clock"></i> คำขอรออนุมัติการจอง (${items.length})</h3>
       <div class="table-wrapper">
         <table class="custom-table">
           <thead>
             <tr>
-              <th>Code</th>
-              <th>ห้องประชุม</th>
-              <th>ผู้ขอจอง</th>
-              <th>วันเวลา</th>
-              <th>ยอดรวม</th>
-              <th>สิทธิ์</th>
-              <th>อนุมัติ / ปฏิเสธ</th>
+              ${getSortHeader('Code', 'booking_code')}
+              ${getSortHeader('ห้องประชุม', 'room_name')}
+              ${getSortHeader('ผู้ขอจอง', 'guest_name')}
+              ${getSortHeader('วันเวลา', 'start_time')}
+              ${getSortHeader('ยอดรวม', 'total_price')}
+              ${getSortHeader('สถานะจอง', 'status')}
+              ${getSortHeader('การชำระเงิน', 'payment_status')}
+              <th>รายละเอียด & ดำเนินการ</th>
             </tr>
           </thead>
           <tbody>
-            ${bookings.length === 0 ? '<tr><td colspan="7" style="text-align:center;">ไม่มีคำขอรออนุมัติ</td></tr>' : bookings.map(b => `
+            ${items.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding: 2rem;">ไม่มีคำขอรออนุมัติ</td></tr>' : items.map(b => `
               <tr>
                 <td><strong>${b.booking_code}</strong></td>
-                <td>${b.room_name}</td>
+                <td>${b.room_name || b.room_id}</td>
                 <td>${b.booking_mode === 'MEMBER' ? 'สมาชิก' : b.guest_name + ' (Guest)'}</td>
                 <td>${formatDateTime(b.start_time)}</td>
-                <td>฿${parseFloat(b.total_price).toLocaleString()}</td>
-                <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span> <br><span class="badge badge-${b.payment_status.toLowerCase()}" style="margin-top:2px;">${b.payment_status}</span></td>
+                <td><strong>฿${parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+                <td>${formatBookingStatusBadge(b.status)}</td>
+                <td>${formatPaymentStatusBadge(b.payment_status)}</td>
                 <td>
-                  <div style="display: flex; gap: 0.3rem;">
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" onclick="showBookingDetailsModal(${b.id})" title="ดูรายละเอียดผู้จองและรายการจอง">
+                      <i class="fa-solid fa-eye"></i> ดูรายละเอียด
+                    </button>
                     ${b.payment_status === 'PAID' ? `
                       <button class="btn btn-success btn-sm" onclick="adminApproveBooking(${b.id}, 'APPROVE')"><i class="fa-solid fa-check"></i> อนุมัติการจอง</button>
                     ` : `
@@ -1123,34 +1179,41 @@ async function switchAdminTab(adminTab) {
         </table>
       </div>
     `;
-  } else if (adminTab === 'payments') {
-    const res = await fetch(`${API_BASE_URL}/bookings`, { headers });
-    const all = await res.json();
-    const payments = all.filter(b => b.payment_status === 'PENDING_VERIFICATION');
-
+  } else if (tab === 'payments') {
     content.innerHTML = `
-      <h3>รายการสลิปชำระเงินรอตรวจสอบ (${payments.length})</h3>
+      <h3 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> รายการสลิปชำระเงินรอตรวจสอบ (${items.length})</h3>
       <div class="table-wrapper">
         <table class="custom-table">
           <thead>
             <tr>
-              <th>Code</th>
-              <th>ผู้จอง</th>
-              <th>ยอดสุทธิ</th>
+              ${getSortHeader('Code', 'booking_code')}
+              ${getSortHeader('ผู้จอง', 'guest_name')}
+              ${getSortHeader('วันเวลา', 'start_time')}
+              ${getSortHeader('ยอดสุทธิ', 'total_price')}
               <th>รูป Slip โอนเงิน</th>
-              <th>การตรวจสอบ</th>
+              <th>รายละเอียด & การตรวจสอบ</th>
             </tr>
           </thead>
           <tbody>
-            ${payments.length === 0 ? '<tr><td colspan="5" style="text-align:center;">ไม่มีสลิปรอตรวจสอบ</td></tr>' : payments.map(b => `
+            ${items.length === 0 ? '<tr><td colspan="6" style="text-align:center; padding: 2rem;">ไม่มีสลิปรอตรวจสอบ</td></tr>' : items.map(b => `
               <tr>
                 <td><strong>${b.booking_code}</strong></td>
                 <td>${b.booking_mode === 'MEMBER' ? 'สมาชิก' : b.guest_name}</td>
-                <td>฿${parseFloat(b.total_price).toLocaleString()}</td>
-                <td><a href="${b.slip_url}" target="_blank" class="btn btn-secondary btn-sm"><i class="fa-solid fa-image"></i> เปิดดู Slip</a></td>
+                <td>${formatDateTime(b.start_time)}</td>
+                <td><strong>฿${parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
                 <td>
-                  <button class="btn btn-success btn-sm" onclick="adminVerifyPayment(${b.id}, 'APPROVE')">ยืนยันถูกต้อง</button>
-                  <button class="btn btn-danger btn-sm" onclick="adminVerifyPayment(${b.id}, 'REJECT')">สลิปไม่ถูกต้อง</button>
+                  ${b.slip_url ? `
+                    <a href="${b.slip_url}" target="_blank" class="btn btn-secondary btn-sm"><i class="fa-solid fa-image"></i> เปิดดู Slip</a>
+                  ` : '<span style="color:var(--text-muted);">ไม่มีรูป</span>'}
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" onclick="showBookingDetailsModal(${b.id})" title="ดูรายละเอียดทั้งหมด">
+                      <i class="fa-solid fa-eye"></i> ดูรายละเอียด
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="adminVerifyPayment(${b.id}, 'APPROVE')"><i class="fa-solid fa-check"></i> ยืนยันถูกต้อง</button>
+                    <button class="btn btn-danger btn-sm" onclick="adminVerifyPayment(${b.id}, 'REJECT')"><i class="fa-solid fa-xmark"></i> สลิปไม่ถูกต้อง</button>
+                  </div>
                 </td>
               </tr>
             `).join('')}
@@ -1158,18 +1221,333 @@ async function switchAdminTab(adminTab) {
         </table>
       </div>
     `;
-  } else if (adminTab === 'all-bookings') {
-    const res = await fetch(`${API_BASE_URL}/bookings`, { headers });
-    const bookings = await res.json();
-    renderBookingsList(bookings, content);
+  } else if (tab === 'all-bookings') {
+    content.innerHTML = `
+      <h3 style="margin-bottom: 0.75rem;"><i class="fa-solid fa-list-check"></i> รายการจองทั้งหมดในระบบ (${items.length})</h3>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              ${getSortHeader('Code', 'booking_code')}
+              ${getSortHeader('ห้องประชุม', 'room_name')}
+              ${getSortHeader('ผู้จอง / สิทธิ์', 'guest_name')}
+              ${getSortHeader('วันและเวลา', 'start_time')}
+              ${getSortHeader('ยอดรวมสุทธิ', 'total_price')}
+              ${getSortHeader('สถานะการจอง', 'status')}
+              ${getSortHeader('การชำระเงิน', 'payment_status')}
+              <th>รายละเอียด & การจัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.length === 0 ? '<tr><td colspan="8" style="text-align:center; padding: 2rem;">ไม่มีรายการจอง</td></tr>' : items.map(b => `
+              <tr>
+                <td><strong>${b.booking_code}</strong></td>
+                <td>${b.room_name || b.room_id}</td>
+                <td>${b.booking_mode === 'MEMBER' ? 'สมาชิก' : b.guest_name + ' (Guest)'}</td>
+                <td>${formatDateTime(b.start_time)} - ${formatTime(b.end_time)}</td>
+                <td><strong>฿${parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+                <td>${formatBookingStatusBadge(b.status)}</td>
+                <td>${formatPaymentStatusBadge(b.payment_status)}</td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem; align-items: center;">
+                    <button class="btn btn-secondary btn-sm" onclick="showBookingDetailsModal(${b.id})">
+                      <i class="fa-solid fa-eye"></i> ดูรายละเอียด
+                    </button>
+                    ${b.status === 'APPROVED' ? `
+                      <button class="btn btn-success btn-sm" onclick="performCheckin(${b.id})">
+                        <i class="fa-solid fa-qrcode"></i> Check-in
+                      </button>
+                    ` : ''}
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } else if (tab === 'equipments') {
+    content.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h3><i class="fa-solid fa-boxes-packing"></i> จัดการอุปกรณ์เสริม (${items.length})</h3>
+        <button class="btn btn-primary btn-sm" onclick="openEquipmentModal()">
+          <i class="fa-solid fa-plus"></i> เพิ่มอุปกรณ์เสริมใหม่
+        </button>
+      </div>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              ${getSortHeader('ID', 'id')}
+              ${getSortHeader('ชื่ออุปกรณ์เสริม', 'name')}
+              ${getSortHeader('รายละเอียด', 'description')}
+              ${getSortHeader('คงเหลือ / ทั้งหมด', 'available_quantity')}
+              ${getSortHeader('ราคาบุคคลทั่วไป (฿/ชม.)', 'standard_price')}
+              ${getSortHeader('ราคาสมาชิก (฿/ชม.)', 'member_price')}
+              <th>เครื่องมือจัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding: 2rem;">ไม่มีรายการอุปกรณ์เสริม</td></tr>' : items.map(eq => `
+              <tr>
+                <td>#${eq.id}</td>
+                <td><strong>${eq.name}</strong></td>
+                <td>${eq.description || '-'}</td>
+                <td><span class="badge badge-approved">${eq.available_quantity} / ${eq.total_quantity}</span></td>
+                <td>฿${parseFloat(eq.standard_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                <td><strong style="color:var(--accent-primary);">฿${parseFloat(eq.member_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong></td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem;">
+                    <button class="btn btn-secondary btn-sm" onclick="openEquipmentModal(${eq.id})">
+                      <i class="fa-solid fa-pen-to-square"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteEquipment(${eq.id}, '${eq.name.replace(/'/g, "\\'")}')">
+                      <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+}
+
+async function showBookingDetailsModal(bookingId) {
+  let b = (adminTableState.data || []).find(item => item.id === bookingId);
+  if (!b) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
+        headers: { 'Authorization': `Bearer ${state.token}` }
+      });
+      if (res.ok) b = await res.json();
+    } catch (err) {}
+  }
+  if (!b) {
+    Swal.fire('ไม่พบข้อมูล', 'ไม่สามารถค้นหาข้อมูลรายการจองนี้ได้', 'error');
+    return;
+  }
+
+  const roomName = b.room_name || `ห้อง #${b.room_id}`;
+  const bookerName = b.booking_mode === 'MEMBER' ? 'สมาชิกที่เข้าสู่ระบบ' : (b.guest_name || 'Guest');
+  const bookerEmail = b.guest_email || '-';
+  const bookerPhone = b.guest_phone || '-';
+  const startFormatted = formatDateTime(b.start_time);
+  const endFormatted = formatTime(b.end_time);
+
+  const roomPrice = parseFloat(b.room_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+  const equipPrice = parseFloat(b.equipment_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+  const discount = parseFloat(b.discount_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+  const totalPrice = parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+
+  let equipHtml = '<em>ไม่มีอุปกรณ์เสริมเพิ่มเติม</em>';
+  if (b.equipments && b.equipments.length > 0) {
+    equipHtml = b.equipments.map(eq => `
+      <li style="margin-bottom: 0.2rem;">
+        ⚙️ ${eq.equipment_name || `อุปกรณ์ #${eq.equipment_id}`}: <strong>${eq.quantity} ชิ้น</strong> 
+        (฿${parseFloat(eq.unit_price || 0).toLocaleString()} x ${eq.quantity} = ฿${parseFloat(eq.subtotal || 0).toLocaleString()})
+      </li>
+    `).join('');
+    equipHtml = `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.88rem;">${equipHtml}</ul>`;
+  }
+
+  let slipPreviewHtml = `<span style="color:var(--text-muted);">ยังไม่ได้แนบสลิปโอนเงิน</span>`;
+  if (b.slip_url) {
+    slipPreviewHtml = `
+      <div style="margin-top: 0.5rem;">
+        <a href="${b.slip_url}" target="_blank" title="คลิกเพื่อดูรูปขนาดเต็ม">
+          <img src="${b.slip_url}" style="max-width: 100%; max-height: 180px; border-radius: 8px; border: 1px solid var(--border-color); object-fit: contain;">
+        </a>
+        <br><a href="${b.slip_url}" target="_blank" style="font-size:0.8rem; color:var(--accent-primary);"><i class="fa-solid fa-up-right-from-square"></i> เปิดดูสลิปขนาดใหญ่</a>
+      </div>
+    `;
+  }
+
+  Swal.fire({
+    title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
+    width: '650px',
+    html: `
+      <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 10px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <p style="margin-bottom:0.3rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName}</p>
+            <p style="margin-bottom:0.3rem;">📍 <strong>สถานที่:</strong> ${b.room_location || '-'}</p>
+            <p style="margin-bottom:0.3rem;">📌 <strong>หัวข้อ:</strong> ${b.subject || '-'}</p>
+            <p style="margin-bottom:0.3rem;">📝 <strong>วัตถุประสงค์:</strong> ${b.purpose || '-'}</p>
+          </div>
+          <div>
+            <p style="margin-bottom:0.3rem;">👤 <strong>ผู้จอง:</strong> ${bookerName}</p>
+            <p style="margin-bottom:0.3rem;">📧 <strong>อีเมล:</strong> ${bookerEmail}</p>
+            <p style="margin-bottom:0.3rem;">📞 <strong>เบอร์โทรศัพท์:</strong> ${bookerPhone}</p>
+            <p style="margin-bottom:0.3rem;">🕒 <strong>วันเวลา:</strong> ${startFormatted} - ${endFormatted}</p>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; margin-bottom: 0.75rem;">
+          <strong>🛠️ รายการอุปกรณ์เสริม:</strong>
+          <div style="margin-top: 0.3rem;">${equipHtml}</div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; margin-bottom: 0.75rem;">
+          <p style="margin-bottom:0.25rem;">💰 ค่าห้อง: ฿${roomPrice} | ค่าอุปกรณ์: ฿${equipPrice} | ส่วนลด: ฿${discount}</p>
+          <p style="font-size: 1.05rem; color: var(--accent-primary); margin: 0;"><strong>ยอดรวมสุทธิ: ฿${totalPrice}</strong></p>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+          <div>
+            <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> ${formatBookingStatusBadge(b.status)}</p>
+            <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> ${formatPaymentStatusBadge(b.payment_status)}</p>
+          </div>
+          <div style="text-align: right;">
+            <strong>💳 สลิปชำระเงิน:</strong>
+            ${slipPreviewHtml}
+          </div>
+        </div>
+      </div>
+    `,
+    confirmButtonText: 'ปิดหน้าต่าง',
+    confirmButtonColor: '#6366F1'
+  });
+}
+
+async function openEquipmentModal(eqId = null) {
+  let eq = null;
+  if (eqId) {
+    eq = (adminTableState.data || []).find(item => item.id === eqId);
+  }
+
+  const { value: formValues } = await Swal.fire({
+    title: eqId ? '✏️ แก้ไขอุปกรณ์เสริม' : '➕ เพิ่มอุปกรณ์เสริมใหม่',
+    width: '550px',
+    html: `
+      <div style="text-align: left; font-size: 0.9rem;">
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">ชื่ออุปกรณ์เสริม *</label>
+          <input id="swal-eq-name" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.name : ''}" placeholder="เช่น Wireless Presenter Clicker">
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+          <label style="font-weight: 600;">รายละเอียดคำอธิบาย</label>
+          <input id="swal-eq-desc" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq && eq.description ? eq.description : ''}" placeholder="รายละเอียดอุปกรณ์...">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+          <div>
+            <label style="font-weight: 600;">จำนวนทั้งหมด *</label>
+            <input type="number" id="swal-eq-total-qty" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.total_quantity : 1}">
+          </div>
+          <div>
+            <label style="font-weight: 600;">จำนวนคงเหลือ *</label>
+            <input type="number" id="swal-eq-avail-qty" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.available_quantity : 1}">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div>
+            <label style="font-weight: 600;">ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-eq-std-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.standard_price : 0}">
+          </div>
+          <div>
+            <label style="font-weight: 600;">ราคาสมาชิก (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-eq-mem-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.member_price : 0}">
+          </div>
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: eqId ? 'บันทึกการแก้ไข' : 'เพิ่มอุปกรณ์',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#10B981',
+    preConfirm: () => {
+      const name = document.getElementById('swal-eq-name').value.trim();
+      if (!name) {
+        Swal.showValidationMessage('กรุณากรอกชื่ออุปกรณ์เสริม');
+        return false;
+      }
+      return {
+        name: name,
+        description: document.getElementById('swal-eq-desc').value.trim() || null,
+        total_quantity: parseInt(document.getElementById('swal-eq-total-qty').value) || 1,
+        available_quantity: parseInt(document.getElementById('swal-eq-avail-qty').value) || 0,
+        standard_price: parseFloat(document.getElementById('swal-eq-std-price').value) || 0,
+        member_price: parseFloat(document.getElementById('swal-eq-mem-price').value) || 0
+      };
+    }
+  });
+
+  if (!formValues) return;
+
+  try {
+    const url = eqId ? `${API_BASE_URL}/equipments/${eqId}` : `${API_BASE_URL}/equipments`;
+    const method = eqId ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      },
+      body: JSON.stringify(formValues)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Save failed');
+
+    Swal.fire({
+      icon: 'success',
+      title: eqId ? 'แก้ไขข้อมูลสำเร็จ!' : 'เพิ่มอุปกรณ์เสริมสำเร็จ!',
+      timer: 1800,
+      showConfirmButton: false
+    });
+    loadAdminDashboard();
+  } catch (err) {
+    Swal.fire('ทำรายการไม่สำเร็จ', err.message, 'error');
+  }
+}
+
+async function confirmDeleteEquipment(eqId, eqName) {
+  const result = await Swal.fire({
+    title: `ลบอุปกรณ์ "${eqName}"?`,
+    text: 'การลบข้อมูลนี้ไม่สามารถยกเลิกได้ คุณแน่ใจหรือไม่?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ลบอุปกรณ์',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#EF4444'
+  });
+  if (!result.isConfirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/equipments/${eqId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    if (!res.ok) throw new Error('Delete failed');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'ลบอุปกรณ์เสริมเรียบร้อยแล้ว',
+      timer: 1500,
+      showConfirmButton: false
+    });
+    loadAdminDashboard();
+  } catch (err) {
+    Swal.fire('ไม่สามารถลบได้', err.message, 'error');
   }
 }
 
 async function adminApproveBooking(bookingId, action) {
   let reason = null;
   if (action === 'REJECT') {
-    reason = prompt('กรุณาระบุเหตุผลที่ไม่ไม่อนุมัติ:');
-    if (!reason) return;
+    const { value: inputReason } = await Swal.fire({
+      title: 'ระบุเหตุผลที่ปฏิเสธ',
+      input: 'textarea',
+      inputPlaceholder: 'พิมพ์เหตุผลการไม่อนุมัติ...',
+      showCancelButton: true,
+      confirmButtonText: 'ยืนยันปฏิเสธ',
+      cancelButtonText: 'ย้อนกลับ',
+      confirmButtonColor: '#EF4444'
+    });
+    if (!inputReason) return;
+    reason = inputReason;
   }
 
   try {
@@ -1181,12 +1559,13 @@ async function adminApproveBooking(bookingId, action) {
       },
       body: JSON.stringify({ action: action, rejection_reason: reason })
     });
-    if (!res.ok) throw new Error('Action failed');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Action failed');
 
     Swal.fire({
       icon: 'success',
-      title: `ทำรายการ ${action} สำเร็จ!`,
-      timer: 1500,
+      title: action === 'APPROVE' ? 'อนุมัติการจองเรียบร้อยแล้ว!' : 'ปฏิเสธการจองเรียบร้อยแล้ว',
+      timer: 1800,
       showConfirmButton: false
     });
     loadAdminDashboard();
@@ -1210,12 +1589,13 @@ async function adminVerifyPayment(bookingId, action) {
       },
       body: JSON.stringify({ action: action })
     });
-    if (!res.ok) throw new Error('Verification failed');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Verification failed');
 
     Swal.fire({
       icon: 'success',
-      title: 'ตรวจสอบสลิปชำระเงินเรียบร้อยแล้ว!',
-      timer: 1500,
+      title: action === 'APPROVE' ? 'อนุมัติสลิปชำระเงินเรียบร้อยแล้ว!' : 'ปฏิเสธสลิปชำระเงินเรียบร้อยแล้ว',
+      timer: 1800,
       showConfirmButton: false
     });
     loadAdminDashboard();
