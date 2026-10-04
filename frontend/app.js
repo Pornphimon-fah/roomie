@@ -304,53 +304,90 @@ function resetFilters() {
   renderRooms(state.rooms);
 }
 
-// --- Render Timeline Grid ---
+// --- Render Interactive FullCalendar Timeline ---
+let calendarInstance = null;
+
 async function renderTimelineGrid() {
-  const dateStr = document.getElementById('timeline-date-picker').value;
-  const container = document.getElementById('timeline-grid-container');
+  const container = document.getElementById('fullcalendar-container');
+  if (!container) return;
 
-  // Time Slots 08:00 - 18:00
-  const hours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-
-  let gridHTML = `<div class="timeline-cell timeline-header">ห้องประชุม / เวลา</div>`;
-  hours.forEach(h => {
-    gridHTML += `<div class="timeline-cell timeline-header">${h}</div>`;
-  });
-
-  // Fetch bookings for this day
   try {
     const res = await fetch(`${API_BASE_URL}/bookings`);
     const allBookings = await res.json();
 
-    state.rooms.forEach(room => {
-      gridHTML += `<div class="timeline-cell" style="font-weight: 600; text-align: left; background: var(--bg-tertiary);">${room.name}</div>`;
-      
-      hours.forEach((h, idx) => {
-        const slotStart = new Date(`${dateStr}T${h}:00Z`);
-        const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+    const events = allBookings
+      .filter(b => b.status !== 'CANCELLED' && b.status !== 'REJECTED')
+      .map(b => {
+        let bgColor = '#10B981'; // Approved
+        if (b.status === 'PENDING_APPROVAL') bgColor = '#F59E0B'; // Pending
+        if (b.status === 'CHECKED_IN') bgColor = '#3B82F6'; // Checked in
+        if (b.status === 'NO_SHOW') bgColor = '#6B7280'; // No show
 
-        // Find matching booking
-        const booked = allBookings.find(b => {
-          if (b.room_id !== room.id) return false;
-          if (b.status === 'CANCELLED' || b.status === 'REJECTED' || b.status === 'NO_SHOW') return false;
-          const bStart = new Date(b.start_time);
-          const bEnd = new Date(b.end_time);
-          return bStart < slotEnd && bEnd > slotStart;
-        });
+        const roomName = b.room_name || `ห้อง #${b.room_id}`;
+        const bookerName = b.booking_mode === 'MEMBER' ? 'สมาชิก' : (b.guest_name || 'Guest');
 
-        if (!booked) {
-          gridHTML += `<div class="timeline-cell slot-available" onclick="quickBookTimeline(${room.id}, '${dateStr}', '${h}')">ว่าง</div>`;
-        } else if (booked.status === 'PENDING_APPROVAL') {
-          gridHTML += `<div class="timeline-cell slot-pending" title="${booked.booking_code}">รออนุมัติ</div>`;
-        } else {
-          gridHTML += `<div class="timeline-cell slot-booked" title="${booked.booking_code}">จองแล้ว</div>`;
-        }
+        return {
+          id: String(b.id),
+          title: `🏢 ${roomName} (${bookerName})`,
+          start: b.start_time,
+          end: b.end_time,
+          backgroundColor: bgColor,
+          borderColor: bgColor,
+          extendedProps: b
+        };
       });
+
+    if (calendarInstance) {
+      calendarInstance.destroy();
+    }
+
+    calendarInstance = new FullCalendar.Calendar(container, {
+      initialView: 'dayGridMonth',
+      locale: 'th',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'timeGridDay,timeGridWeek,dayGridMonth,multiMonthYear'
+      },
+      buttonText: {
+        today: 'วันนี้',
+        day: 'รายวัน (Day)',
+        week: 'รายสัปดาห์ (Week)',
+        month: 'รายเดือน (Month)',
+        year: 'รายปี (Year)'
+      },
+      events: events,
+      eventClick: function(info) {
+        const b = info.event.extendedProps;
+        const roomName = b.room_name || `ห้อง #${b.room_id}`;
+        const booker = b.booking_mode === 'MEMBER' ? 'สมาชิกที่เข้าสู่ระบบ' : `${b.guest_name} (Guest: ${b.guest_phone || '-'})`;
+        const startFormatted = formatDateTime(b.start_time);
+        const endFormatted = formatTime(b.end_time);
+        const priceFormatted = parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+
+        Swal.fire({
+          title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
+          html: `
+            <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 8px;">
+              <p style="margin-bottom:0.4rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName} (${b.room_location || ''})</p>
+              <p style="margin-bottom:0.4rem;">👤 <strong>ผู้จอง:</strong> ${booker}</p>
+              <p style="margin-bottom:0.4rem;">📌 <strong>หัวข้อ:</strong> ${b.subject || '-'}</p>
+              <p style="margin-bottom:0.4rem;">📝 <strong>วัตถุประสงค์:</strong> ${b.purpose || '-'}</p>
+              <p style="margin-bottom:0.4rem;">🕒 <strong>วันเวลา:</strong> ${startFormatted} - ${endFormatted}</p>
+              <p style="margin-bottom:0.4rem;">💰 <strong>ยอดชำระสุทธิ:</strong> <strong style="color: #6366F1;">฿${priceFormatted}</strong></p>
+              <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
+              <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> <span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></p>
+            </div>
+          `,
+          confirmButtonText: 'ปิดหน้าต่าง',
+          confirmButtonColor: '#6366F1'
+        });
+      }
     });
 
-    container.innerHTML = gridHTML;
+    calendarInstance.render();
   } catch (err) {
-    console.error("Timeline render error:", err);
+    console.error("Calendar render error:", err);
   }
 }
 

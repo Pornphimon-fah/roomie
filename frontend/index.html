@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- SweetAlert2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- FullCalendar v6 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 </head>
 <body>
 
@@ -109,24 +111,25 @@
       </div>
     </section>
 
-    <!-- VIEW 2: Interactive Time-Grid Timeline Calendar -->
+    <!-- VIEW 2: Interactive FullCalendar Timeline -->
     <section id="view-timeline" style="display: none;">
       <div class="section-header">
-        <h2><i class="fa-solid fa-calendar-days"></i> ตารางเวลาประจำวัน (Time-Grid Calendar)</h2>
-        <div style="display: flex; gap: 1rem; align-items: center;">
-          <input type="date" id="timeline-date-picker" class="form-control" style="width: auto;" onchange="renderTimelineGrid()">
-        </div>
+        <h2><i class="fa-solid fa-calendar-days"></i> ปฏิทินแสดงตารางการจองห้องประชุม (Interactive Room Calendar)</h2>
       </div>
 
-      <div class="timeline-section">
-        <div style="display: flex; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.85rem; justify-content: flex-end;">
-          <span style="display: flex; align-items: center; gap: 0.3rem;"><i class="fa-solid fa-square" style="color: #10B981;"></i> ว่าง</span>
-          <span style="display: flex; align-items: center; gap: 0.3rem;"><i class="fa-solid fa-square" style="color: #F59E0B;"></i> รออนุมัติ</span>
-          <span style="display: flex; align-items: center; gap: 0.3rem;"><i class="fa-solid fa-square" style="color: #EF4444;"></i> จองแล้ว</span>
+      <div class="timeline-section" style="padding: 1.5rem; background: var(--bg-secondary); border-radius: var(--radius-lg);">
+        <div style="display: flex; gap: 1.5rem; margin-bottom: 1.25rem; font-size: 0.88rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+          <div style="color: var(--text-secondary);">
+            <i class="fa-solid fa-circle-info"></i> สามารถคลิกเลือกมุมมอง <strong>รายวัน / รายสัปดาห์ / รายเดือน / รายปี</strong> หรือคลิกรายการจองเพื่อดูรายละเอียดได้ทันที
+          </div>
+          <div style="display: flex; gap: 1.25rem; font-weight: 600;">
+            <span style="display: flex; align-items: center; gap: 0.35rem;"><i class="fa-solid fa-square" style="color: #10B981;"></i> อนุมัติแล้ว</span>
+            <span style="display: flex; align-items: center; gap: 0.35rem;"><i class="fa-solid fa-square" style="color: #F59E0B;"></i> รออนุมัติ</span>
+            <span style="display: flex; align-items: center; gap: 0.35rem;"><i class="fa-solid fa-square" style="color: #3B82F6;"></i> Check-in แล้ว</span>
+          </div>
         </div>
-        <div class="timeline-grid" id="timeline-grid-container">
-          <!-- Timeline cells injected by app.js -->
-        </div>
+
+        <div id="fullcalendar-container" style="min-height: 650px;"></div>
       </div>
     </section>
 

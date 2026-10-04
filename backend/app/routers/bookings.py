@@ -163,9 +163,9 @@ async def create_booking(
             eq_res = await db.execute(eq_stmt)
             eq = eq_res.scalar_one_or_none()
             if not eq:
-                raise HTTPException(status_code=404, detail=f"Equipment ID {item.equipment_id} not found")
+                raise HTTPException(status_code=404, detail=f"ไม่พบข้อมูลอุปกรณ์เสริม ID {item.equipment_id}")
             if eq.available_quantity < item.quantity:
-                raise HTTPException(status_code=400, detail=f"Not enough stock for equipment: {eq.name}")
+                raise HTTPException(status_code=400, detail=f"จำนวนอุปกรณ์เสริมไม่เพียงพอ: {eq.name} (คงเหลือเพียง {eq.available_quantity} ชิ้น)")
 
             unit_rate = eq.member_price if is_member else eq.standard_price
             subtotal = Decimal(str(unit_rate)) * Decimal(item.quantity)
@@ -187,7 +187,7 @@ async def create_booking(
         promo_res = await db.execute(promo_stmt)
         promo = promo_res.scalar_one_or_none()
         if not promo:
-            raise HTTPException(status_code=400, detail="Invalid or expired promo code")
+            raise HTTPException(status_code=400, detail="รหัสส่วนลดไม่ถูกต้องหรือหมดอายุแล้ว")
         promotion_id = promo.id
         subtotal_before_discount = room_price_total + equip_price_total
         if promo.discount_percent:

@@ -891,3 +891,64 @@ footer {
   .nav-links { display: none; }
   .equipment-addon-card { flex-direction: column; align-items: flex-start; }
 }
+
+/* FullCalendar Custom Theme Integration */
+.fc {
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.fc .fc-button-primary {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  border-radius: var(--radius-md) !important;
+  padding: 0.45rem 0.9rem !important;
+  box-shadow: none !important;
+  transition: var(--transition);
+}
+
+.fc .fc-button-primary:hover,
+.fc .fc-button-primary:focus,
+.fc .fc-button-primary.fc-button-active {
+  background-color: var(--accent-primary) !important;
+  border-color: var(--accent-primary) !important;
+  color: white !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.fc-theme-standard td, .fc-theme-standard th {
+  border-color: var(--border-color);
+}
+
+.fc-theme-standard .fc-scrollgrid {
+  border-color: var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: none !important;
+}
+
+.fc-event {
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  font-size: 0.85rem !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.fc-event:hover {
+  transform: scale(1.02);
+}
