@@ -312,8 +312,20 @@ async function renderTimelineGrid() {
   if (!container) return;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/bookings`);
+    const headers = {};
+    if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+    const res = await fetch(`${API_BASE_URL}/bookings/timeline`, { headers });
+    
+    if (!res.ok) {
+      console.error("Failed to fetch timeline bookings. Status:", res.status);
+      return;
+    }
+    
     const allBookings = await res.json();
+    if (!Array.isArray(allBookings)) {
+      console.error("Bookings payload is not an array:", allBookings);
+      return;
+    }
 
     const events = allBookings
       .filter(b => b.status !== 'CANCELLED' && b.status !== 'REJECTED')
@@ -341,51 +353,53 @@ async function renderTimelineGrid() {
       calendarInstance.destroy();
     }
 
-    calendarInstance = new FullCalendar.Calendar(container, {
-      initialView: 'dayGridMonth',
-      locale: 'th',
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'timeGridDay,timeGridWeek,dayGridMonth,multiMonthYear'
-      },
-      buttonText: {
-        today: 'วันนี้',
-        day: 'รายวัน (Day)',
-        week: 'รายสัปดาห์ (Week)',
-        month: 'รายเดือน (Month)',
-        year: 'รายปี (Year)'
-      },
-      events: events,
-      eventClick: function(info) {
-        const b = info.event.extendedProps;
-        const roomName = b.room_name || `ห้อง #${b.room_id}`;
-        const booker = b.booking_mode === 'MEMBER' ? 'สมาชิกที่เข้าสู่ระบบ' : `${b.guest_name} (Guest: ${b.guest_phone || '-'})`;
-        const startFormatted = formatDateTime(b.start_time);
-        const endFormatted = formatTime(b.end_time);
-        const priceFormatted = parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+    setTimeout(() => {
+      calendarInstance = new FullCalendar.Calendar(container, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay,listYear'
+        },
+        buttonText: {
+          today: 'วันนี้',
+          day: 'รายวัน',
+          week: 'รายสัปดาห์',
+          month: 'รายเดือน',
+          year: 'รายปี'
+        },
+        events: events,
+        eventClick: function(info) {
+          const b = info.event.extendedProps;
+          const roomName = b.room_name || `ห้อง #${b.room_id}`;
+          const booker = b.booking_mode === 'MEMBER' ? 'สมาชิกที่เข้าสู่ระบบ' : `${b.guest_name} (Guest: ${b.guest_phone || '-'})`;
+          const startFormatted = formatDateTime(b.start_time);
+          const endFormatted = formatTime(b.end_time);
+          const priceFormatted = parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
 
-        Swal.fire({
-          title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
-          html: `
-            <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 8px;">
-              <p style="margin-bottom:0.4rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName} (${b.room_location || ''})</p>
-              <p style="margin-bottom:0.4rem;">👤 <strong>ผู้จอง:</strong> ${booker}</p>
-              <p style="margin-bottom:0.4rem;">📌 <strong>หัวข้อ:</strong> ${b.subject || '-'}</p>
-              <p style="margin-bottom:0.4rem;">📝 <strong>วัตถุประสงค์:</strong> ${b.purpose || '-'}</p>
-              <p style="margin-bottom:0.4rem;">🕒 <strong>วันเวลา:</strong> ${startFormatted} - ${endFormatted}</p>
-              <p style="margin-bottom:0.4rem;">💰 <strong>ยอดชำระสุทธิ:</strong> <strong style="color: #6366F1;">฿${priceFormatted}</strong></p>
-              <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
-              <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> <span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></p>
-            </div>
-          `,
-          confirmButtonText: 'ปิดหน้าต่าง',
-          confirmButtonColor: '#6366F1'
-        });
-      }
-    });
+          Swal.fire({
+            title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
+            html: `
+              <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 8px;">
+                <p style="margin-bottom:0.4rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName} (${b.room_location || ''})</p>
+                <p style="margin-bottom:0.4rem;">👤 <strong>ผู้จอง:</strong> ${booker}</p>
+                <p style="margin-bottom:0.4rem;">📌 <strong>หัวข้อ:</strong> ${b.subject || '-'}</p>
+                <p style="margin-bottom:0.4rem;">📝 <strong>วัตถุประสงค์:</strong> ${b.purpose || '-'}</p>
+                <p style="margin-bottom:0.4rem;">🕒 <strong>วันเวลา:</strong> ${startFormatted} - ${endFormatted}</p>
+                <p style="margin-bottom:0.4rem;">💰 <strong>ยอดชำระสุทธิ:</strong> <strong style="color: #6366F1;">฿${priceFormatted}</strong></p>
+                <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
+                <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> <span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></p>
+              </div>
+            `,
+            confirmButtonText: 'ปิดหน้าต่าง',
+            confirmButtonColor: '#6366F1'
+          });
+        }
+      });
 
-    calendarInstance.render();
+      calendarInstance.render();
+      calendarInstance.updateSize();
+    }, 50);
   } catch (err) {
     console.error("Calendar render error:", err);
   }

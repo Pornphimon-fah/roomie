@@ -262,6 +262,19 @@ async def create_booking(
 
     return build_booking_response(full_booking)
 
+@router.get("/timeline", response_model=List[BookingResponse])
+async def list_timeline_bookings(
+    db: AsyncSession = Depends(get_db)
+):
+    await auto_release_no_shows(db)
+    stmt = select(Booking).options(
+        selectinload(Booking.room),
+        selectinload(Booking.equipments).selectinload(BookingEquipment.equipment)
+    ).order_by(Booking.start_time.asc())
+    res = await db.execute(stmt)
+    bookings = res.scalars().all()
+    return [build_booking_response(b) for b in bookings]
+
 @router.get("/code/{booking_code}", response_model=BookingResponse)
 async def get_booking_by_code(booking_code: str, db: AsyncSession = Depends(get_db)):
     await auto_release_no_shows(db)
