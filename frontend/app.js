@@ -357,6 +357,8 @@ async function renderTimelineGrid() {
       return;
     }
 
+    const isPrivileged = state.user && (state.user.role === 'admin' || state.user.role === 'room_manager');
+
     const events = allBookings
       .filter(b => b.status !== 'CANCELLED' && b.status !== 'REJECTED')
       .map(b => {
@@ -366,11 +368,15 @@ async function renderTimelineGrid() {
         if (b.status === 'NO_SHOW') bgColor = '#6B7280'; // No show
 
         const roomName = b.room_name || `ห้อง #${b.room_id}`;
-        const bookerName = b.booking_mode === 'MEMBER' ? 'สมาชิก' : (b.guest_name || 'Guest');
+        const isOwner = state.user && state.user.id && (state.user.id === b.user_id);
+        const canViewBooker = isPrivileged || isOwner;
+        const titleText = canViewBooker
+          ? `🏢 ${roomName} (${b.booking_mode === 'MEMBER' ? 'สมาชิก' : (b.guest_name || 'Guest')})`
+          : `🏢 ${roomName} (ไม่ว่าง)`;
 
         return {
           id: String(b.id),
-          title: `🏢 ${roomName} (${bookerName})`,
+          title: titleText,
           start: b.start_time,
           end: b.end_time,
           backgroundColor: bgColor,
@@ -402,14 +408,18 @@ async function renderTimelineGrid() {
         eventClick: function(info) {
           const b = info.event.extendedProps;
           const roomName = b.room_name || `ห้อง #${b.room_id}`;
-          const booker = b.booking_mode === 'MEMBER' ? 'สมาชิกที่เข้าสู่ระบบ' : `${b.guest_name} (Guest: ${b.guest_phone || '-'})`;
           const startFormatted = formatDateTime(b.start_time);
           const endFormatted = formatTime(b.end_time);
-          const priceFormatted = parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
 
-          Swal.fire({
-            title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
-            html: `
+          const isOwner = state.user && state.user.id && (state.user.id === b.user_id);
+          const canViewDetails = isPrivileged || isOwner;
+
+          let contentHtml = '';
+          if (canViewDetails) {
+            const booker = b.booking_mode === 'MEMBER' ? 'สมาชิกที่เข้าสู่ระบบ' : `${b.guest_name} (Guest: ${b.guest_phone || '-'})`;
+            const priceFormatted = parseFloat(b.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            contentHtml = `
               <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 8px;">
                 <p style="margin-bottom:0.4rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName} (${b.room_location || ''})</p>
                 <p style="margin-bottom:0.4rem;">👤 <strong>ผู้จอง:</strong> ${booker}</p>
@@ -420,7 +430,21 @@ async function renderTimelineGrid() {
                 <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
                 <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> <span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></p>
               </div>
-            `,
+            `;
+          } else {
+            contentHtml = `
+              <div style="text-align: left; font-size: 0.92rem; line-height: 1.6; background: var(--bg-tertiary); padding: 1.25rem; border-radius: 8px;">
+                <p style="margin-bottom:0.4rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName} (${b.room_location || ''})</p>
+                <p style="margin-bottom:0.4rem;">📌 <strong>หัวข้อการประชุม:</strong> ${b.subject || '-'}</p>
+                <p style="margin-bottom:0.4rem;">🕒 <strong>วันเวลาที่ใช้งาน:</strong> ${startFormatted} - ${endFormatted}</p>
+                <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
+              </div>
+            `;
+          }
+
+          Swal.fire({
+            title: `📌 รายละเอียดการจอง: ${b.booking_code}`,
+            html: contentHtml,
             confirmButtonText: 'ปิดหน้าต่าง',
             confirmButtonColor: '#6366F1'
           });
