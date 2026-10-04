@@ -427,8 +427,8 @@ async function renderTimelineGrid() {
                 <p style="margin-bottom:0.4rem;">📝 <strong>วัตถุประสงค์:</strong> ${b.purpose || '-'}</p>
                 <p style="margin-bottom:0.4rem;">🕒 <strong>วันเวลา:</strong> ${startFormatted} - ${endFormatted}</p>
                 <p style="margin-bottom:0.4rem;">💰 <strong>ยอดชำระสุทธิ:</strong> <strong style="color: #6366F1;">฿${priceFormatted}</strong></p>
-                <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
-                <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> <span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></p>
+                <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> ${formatBookingStatusBadge(b.status)}</p>
+                <p style="margin-bottom:0.4rem;">💳 <strong>สถานะชำระเงิน:</strong> ${formatPaymentStatusBadge(b.payment_status)}</p>
               </div>
             `;
           } else {
@@ -437,7 +437,7 @@ async function renderTimelineGrid() {
                 <p style="margin-bottom:0.4rem;">🏢 <strong>ห้องประชุม:</strong> ${roomName} (${b.room_location || ''})</p>
                 <p style="margin-bottom:0.4rem;">📌 <strong>หัวข้อการประชุม:</strong> ${b.subject || '-'}</p>
                 <p style="margin-bottom:0.4rem;">🕒 <strong>วันเวลาที่ใช้งาน:</strong> ${startFormatted} - ${endFormatted}</p>
-                <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></p>
+                <p style="margin-bottom:0.4rem;">🏷️ <strong>สถานะการจอง:</strong> ${formatBookingStatusBadge(b.status)}</p>
               </div>
             `;
           }
@@ -1087,7 +1087,7 @@ async function loadAdminDashboard() {
 }
 
 async function switchAdminTab(adminTab) {
-  const validTabs = ['approvals', 'payments', 'all-bookings', 'rooms', 'equipments', 'promotions'];
+  const validTabs = ['approvals', 'payments', 'all-bookings', 'rooms', 'equipments', 'promotions', 'users'];
   if (!validTabs.includes(adminTab)) adminTab = 'approvals';
 
   localStorage.setItem('roomie_admin_subtab', adminTab);
@@ -1123,6 +1123,9 @@ async function switchAdminTab(adminTab) {
       adminTableState.data = await res.json();
     } else if (adminTab === 'promotions') {
       const res = await fetch(`${API_BASE_URL}/promotions`, { headers });
+      adminTableState.data = await res.json();
+    } else if (adminTab === 'users') {
+      const res = await fetch(`${API_BASE_URL}/users`, { headers });
       adminTableState.data = await res.json();
     }
   } catch (err) {
@@ -1404,6 +1407,56 @@ function renderAdminTabContent() {
                       <i class="fa-solid fa-pen-to-square"></i> แก้ไข
                     </button>
                     <button class="btn btn-danger btn-sm" onclick="confirmDeletePromo(${p.id}, '${p.code}')">
+                      <i class="fa-solid fa-trash"></i> ลบ
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } else if (tab === 'users') {
+    content.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <h3><i class="fa-solid fa-users-cog"></i> จัดการผู้ใช้งานระบบ & สิทธิ์ (${items.length})</h3>
+        <button class="btn btn-primary btn-sm" onclick="openUserModal()">
+          <i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้งานใหม่
+        </button>
+      </div>
+      <div class="table-wrapper">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              ${getSortHeader('ID', 'id')}
+              ${getSortHeader('ชื่อ - นามสกุล', 'full_name')}
+              ${getSortHeader('อีเมล', 'email')}
+              ${getSortHeader('เบอร์โทรศัพท์', 'phone')}
+              ${getSortHeader('สิทธิ์การใช้งาน (Role)', 'role')}
+              ${getSortHeader('สถานะบัญชี', 'is_active')}
+              <th>เครื่องมือจัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.length === 0 ? '<tr><td colspan="7" style="text-align:center; padding: 2rem;">ไม่มีรายการผู้ใช้งาน</td></tr>' : items.map(u => `
+              <tr>
+                <td>#${u.id}</td>
+                <td><strong>${u.full_name || '-'}</strong></td>
+                <td>${u.email}</td>
+                <td>${u.phone || '-'}</td>
+                <td>
+                  ${u.role === 'ADMIN' ? '<span class="badge badge-rejected"><i class="fa-solid fa-user-shield"></i> ผู้ดูแลระบบ (ADMIN)</span>' :
+                    u.role === 'APPROVER' ? '<span class="badge badge-pending"><i class="fa-solid fa-user-check"></i> ผู้อนุมัติ (APPROVER)</span>' :
+                    '<span class="badge badge-approved"><i class="fa-solid fa-user"></i> สมาชิกทั่วไป (MEMBER)</span>'}
+                </td>
+                <td>${u.is_active ? '<span class="badge badge-approved">ใช้งานอยู่ (Active)</span>' : '<span class="badge badge-noshow">ระงับการใช้งาน</span>'}</td>
+                <td>
+                  <div style="display: flex; gap: 0.35rem;">
+                    <button class="btn btn-secondary btn-sm" onclick="openUserModal(${u.id})">
+                      <i class="fa-solid fa-user-pen"></i> แก้ไข
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser(${u.id}, '${(u.full_name || u.email).replace(/'/g, "\\'")}')">
                       <i class="fa-solid fa-trash"></i> ลบ
                     </button>
                   </div>
@@ -1798,35 +1851,39 @@ async function openEquipmentModal(eqId = null) {
 
   const { value: formValues } = await Swal.fire({
     title: eqId ? '✏️ แก้ไขอุปกรณ์เสริม' : '➕ เพิ่มอุปกรณ์เสริมใหม่',
-    width: '550px',
+    width: '720px',
     html: `
-      <div style="text-align: left; font-size: 0.9rem;">
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">ชื่ออุปกรณ์เสริม *</label>
-          <input id="swal-eq-name" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.name : ''}" placeholder="เช่น Wireless Presenter Clicker">
-        </div>
-        <div style="margin-bottom: 0.75rem;">
-          <label style="font-weight: 600;">รายละเอียดคำอธิบาย</label>
-          <input id="swal-eq-desc" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq && eq.description ? eq.description : ''}" placeholder="รายละเอียดอุปกรณ์...">
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+      <div style="text-align: left; font-size: 0.95rem; padding: 0.5rem 0;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
           <div>
-            <label style="font-weight: 600;">จำนวนทั้งหมด *</label>
-            <input type="number" id="swal-eq-total-qty" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.total_quantity : 1}">
+            <label style="font-weight: 600; color: var(--text-primary);">⚙️ ชื่ออุปกรณ์เสริม *</label>
+            <input id="swal-eq-name" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.name : ''}" placeholder="เช่น Wireless Presenter Clicker">
           </div>
           <div>
-            <label style="font-weight: 600;">จำนวนคงเหลือ *</label>
-            <input type="number" id="swal-eq-avail-qty" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.available_quantity : 1}">
+            <label style="font-weight: 600; color: var(--text-primary);">📝 รายละเอียดคำอธิบาย</label>
+            <input id="swal-eq-desc" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq && eq.description ? eq.description : ''}" placeholder="รายละเอียดอุปกรณ์...">
           </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
           <div>
-            <label style="font-weight: 600;">ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
-            <input type="number" step="0.01" id="swal-eq-std-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.standard_price : 0}">
+            <label style="font-weight: 600; color: var(--text-primary);">📦 จำนวนทั้งหมด *</label>
+            <input type="number" id="swal-eq-total-qty" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.total_quantity : 1}">
           </div>
           <div>
-            <label style="font-weight: 600;">ราคาสมาชิก (บาท/ชม.) *</label>
-            <input type="number" step="0.01" id="swal-eq-mem-price" class="swal2-input" style="width: 100%; margin-top: 0.25rem;" value="${eq ? eq.member_price : 0}">
+            <label style="font-weight: 600; color: var(--text-primary);">✅ จำนวนคงเหลือพร้อมใช้งาน *</label>
+            <input type="number" id="swal-eq-avail-qty" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.available_quantity : 1}">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label style="font-weight: 600; color: var(--text-primary);">💰 ราคาบุคคลทั่วไป (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-eq-std-price" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.standard_price : 0}">
+          </div>
+          <div>
+            <label style="font-weight: 600; color: var(--text-primary);">💎 ราคาสมาชิก (บาท/ชม.) *</label>
+            <input type="number" step="0.01" id="swal-eq-mem-price" style="width: 100%; margin-top: 0.35rem; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-secondary); color: var(--text-primary); outline: none;" value="${eq ? eq.member_price : 0}">
           </div>
         </div>
       </div>
@@ -2010,4 +2067,170 @@ function formatTime(str) {
   if (!str) return '-';
   const d = new Date(str);
   return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+}
+
+// --- User & Role Management Modal Functions ---
+async function openUserModal(userId = null) {
+  let u = null;
+  if (userId) {
+    u = (adminTableState.data || []).find(item => item.id === userId);
+  }
+
+  const { value: formValues } = await Swal.fire({
+    title: userId ? '✏️ แก้ไขข้อมูลและสิทธิ์ผู้ใช้งาน' : '➕ เพิ่มผู้ใช้งานใหม่เข้าสู่ระบบ',
+    width: '680px',
+    html: `
+      <div style="text-align: left; font-size: 0.9rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
+          <div>
+            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">ชื่อ - นามสกุล *</label>
+            <input id="swal-user-name" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" value="${u && u.full_name ? u.full_name : ''}" placeholder="สมชาย สายมั่นคง">
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">อีเมล (Email) *</label>
+            <input type="email" id="swal-user-email" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" value="${u ? u.email : ''}" placeholder="user@example.com">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
+          <div>
+            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">เบอร์โทรศัพท์</label>
+            <input type="tel" id="swal-user-phone" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" value="${u && u.phone ? u.phone : ''}" placeholder="081-234-5678">
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">รหัสผ่าน ${userId ? '(เว้นว่างไว้หากไม่ต้องการเปลี่ยน)' : '*'}</label>
+            <input type="password" id="swal-user-password" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px;" placeholder="${userId ? '******' : 'กำหนดรหัสผ่าน'}">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
+          <div>
+            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">สิทธิ์การใช้งานระบบ (Role) *</label>
+            <select id="swal-user-role" class="swal2-input" style="width: 100%; margin: 0; padding: 0.6rem 0.8rem; height: auto; font-size: 0.95rem; border-radius: 8px; background: var(--bg-tertiary); color: var(--text-main);">
+              <option value="MEMBER" ${!u || u.role === 'MEMBER' ? 'selected' : ''}>MEMBER - สมาชิกผู้ขอจองทั่วไป</option>
+              <option value="APPROVER" ${u && u.role === 'APPROVER' ? 'selected' : ''}>APPROVER - ผู้อนุมัติการจอง</option>
+              <option value="ADMIN" ${u && u.role === 'ADMIN' ? 'selected' : ''}>ADMIN - ผู้ดูแลระบบสูงสุด</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.88rem; margin-bottom: 0.35rem; display: block; color: var(--text-muted);">สถานะบัญชี (Status)</label>
+            <div style="display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 0.8rem; background: var(--bg-tertiary); border-radius: 8px; margin-top: 0.1rem;">
+              <input type="checkbox" id="swal-user-active" style="width: 18px; height: 18px; cursor: pointer;" ${!u || u.is_active ? 'checked' : ''}>
+              <label for="swal-user-active" style="cursor: pointer; font-size: 0.9rem;">เปิดใช้งานบัญชีนี้ (Active)</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: userId ? 'บันทึกการปรับปรุงสิทธิ์' : 'เพิ่มผู้ใช้งาน',
+    cancelButtonText: 'ยกเลิก',
+    confirmButtonColor: '#4F46E5',
+    preConfirm: () => {
+      const fullName = document.getElementById('swal-user-name').value.trim();
+      const email = document.getElementById('swal-user-email').value.trim();
+      const phone = document.getElementById('swal-user-phone').value.trim();
+      const password = document.getElementById('swal-user-password').value;
+      const role = document.getElementById('swal-user-role').value;
+      const isActive = document.getElementById('swal-user-active').checked;
+
+      if (!fullName) {
+        Swal.showValidationMessage('กรุณากรอกชื่อ - นามสกุล');
+        return false;
+      }
+      if (!email) {
+        Swal.showValidationMessage('กรุณากรอกอีเมลผู้ใช้งาน');
+        return false;
+      }
+      if (!userId && !password) {
+        Swal.showValidationMessage('กรุณากำหนดรหัสผ่านสำหรับผู้ใช้งานใหม่');
+        return false;
+      }
+
+      const payload = {
+        full_name: fullName,
+        email: email,
+        phone: phone || null,
+        role: role,
+        is_active: isActive
+      };
+      if (password) {
+        payload.password = password;
+      }
+      return payload;
+    }
+  });
+
+  if (!formValues) return;
+
+  try {
+    const url = userId ? `${API_BASE_URL}/users/${userId}` : `${API_BASE_URL}/users`;
+    const method = userId ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${state.token}`
+      },
+      body: JSON.stringify(formValues)
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || 'เกิดข้อผิดพลาดในการจัดการผู้ใช้งาน');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'สำเร็จ!',
+      text: userId ? 'ปรับปรุงข้อมูลผู้ใช้งานเรียบร้อยแล้ว' : 'เพิ่มผู้ใช้งานใหม่เข้าสู่ระบบเรียบร้อยแล้ว',
+      timer: 1800,
+      showConfirmButton: false
+    });
+    switchAdminTab('users');
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'ล้มเหลว',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
+  }
+}
+
+async function confirmDeleteUser(userId, userName) {
+  const result = await Swal.fire({
+    title: `ลบผู้ใช้งาน "${userName}" ?`,
+    text: 'การดำเนินการนี้จะไม่สามารถย้อนกลับได้',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#EF4444',
+    cancelButtonColor: '#6B7280',
+    confirmButtonText: 'ใช่, ลบเลย!',
+    cancelButtonText: 'ยกเลิก'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${state.token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'ลบผู้ใช้งานไม่สำเร็จ');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'ลบสำเร็จ!',
+      text: `ลบผู้ใช้งาน "${userName}" เรียบร้อยแล้ว`,
+      timer: 1800,
+      showConfirmButton: false
+    });
+    switchAdminTab('users');
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'เกิดข้อผิดพลาด',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
+  }
 }

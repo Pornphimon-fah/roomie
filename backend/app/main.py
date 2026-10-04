@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import (
-    auth, rooms, equipments, bookings, promotions, notifications, reports
+    auth, rooms, equipments, bookings, promotions, notifications, reports, users
 )
 
 app = FastAPI(
@@ -35,6 +35,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Include Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(rooms.router, prefix=settings.API_V1_STR)
 app.include_router(equipments.router, prefix=settings.API_V1_STR)
 app.include_router(bookings.router, prefix=settings.API_V1_STR)

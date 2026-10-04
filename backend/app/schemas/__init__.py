@@ -1,5 +1,5 @@
 from app.schemas.schemas import (
-    UserBase, UserCreate, UserResponse, Token, LoginRequest,
+    UserBase, UserCreate, UserUpdate, UserResponse, Token, LoginRequest,
     RoomBase, RoomCreate, RoomResponse,
     EquipmentBase, EquipmentCreate, EquipmentResponse,
     PromotionBase, PromotionCreate, PromotionResponse,
@@ -9,7 +9,7 @@ from app.schemas.schemas import (
 )
 
 __all__ = [
-    "UserBase", "UserCreate", "UserResponse", "Token", "LoginRequest",
+    "UserBase", "UserCreate", "UserUpdate", "UserResponse", "Token", "LoginRequest",
     "RoomBase", "RoomCreate", "RoomResponse",
     "EquipmentBase", "EquipmentCreate", "EquipmentResponse",
     "PromotionBase", "PromotionCreate", "PromotionResponse",
