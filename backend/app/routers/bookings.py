@@ -1,9 +1,11 @@
+import os
+import uuid
 import random
 import string
 from datetime import datetime, timedelta
 from typing import List, Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy import select, and_, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -322,8 +324,13 @@ async def approve_or_reject_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     if approval.action == "APPROVE":
+        if booking.payment_status != PaymentStatus.PAID:
+            raise HTTPException(
+                status_code=400,
+                detail="ไม่สามารถอนุมัติการจองได้ เนื่องจากผู้ใช้งานยังไม่ได้ชำระเงิน หรือสลิปชำระเงินยังไม่ผ่านการอนุมัติ (สถานะต้องเป็น PAID ก่อนเท่านั้น)"
+            )
         booking.status = BookingStatus.APPROVED
-        msg = f"Your booking {booking.booking_code} for {booking.room.name} has been APPROVED!"
+        msg = f"คำขอจองห้อง {booking.room.name} (รหัส {booking.booking_code}) ของคุณได้รับการอนุมัติเรียบร้อยแล้ว!"
     elif approval.action == "REJECT":
         booking.status = BookingStatus.REJECTED
         booking.rejection_reason = approval.rejection_reason
@@ -398,6 +405,47 @@ async def upload_payment_slip(
 
     booking.payment_method = payment_in.payment_method
     booking.slip_url = payment_in.slip_url
+    booking.payment_status = PaymentStatus.PENDING_VERIFICATION
+    await db.commit()
+    await db.refresh(booking)
+    return build_booking_response(booking)
+
+@router.post("/{booking_id}/upload-slip-file", response_model=BookingResponse)
+async def upload_payment_slip_file(
+    booking_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    stmt = select(Booking).options(
+        selectinload(Booking.room),
+        selectinload(Booking.equipments).selectinload(BookingEquipment.equipment)
+    ).where(Booking.id == booking_id)
+    res = await db.execute(stmt)
+    booking = res.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="ไม่พบรายการจองนี้")
+
+    filename = file.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png", ".webp", ".pdf"]:
+        raise HTTPException(
+            status_code=400,
+            detail="รูปแบบไฟล์ไม่ถูกต้อง รองรับเฉพาะไฟล์ภาพ (.jpg, .jpeg, .png, .webp) หรือเอกสาร (.pdf) เท่านั้น"
+        )
+
+    upload_dir = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", "slips")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    new_filename = f"slip_{booking_id}_{uuid.uuid4().hex[:8]}{ext}"
+    file_path = os.path.join(upload_dir, new_filename)
+
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    file_url = f"http://localhost:8000/static/uploads/slips/{new_filename}"
+    booking.payment_method = "PROMPTPAY"
+    booking.slip_url = file_url
     booking.payment_status = PaymentStatus.PENDING_VERIFICATION
     await db.commit()
     await db.refresh(booking)

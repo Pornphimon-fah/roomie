@@ -13,6 +13,13 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+import os
+from fastapi.staticfiles import StaticFiles
+
+# Ensure uploads directory exists
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "static", "uploads", "slips")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 # Enable CORS for Frontend JavaScript interaction
 app.add_middleware(
     CORSMiddleware,
@@ -21,6 +28,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Static Files directory for uploaded slips
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Include Routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)

@@ -689,33 +689,103 @@ async function handleBookingSubmit(e) {
   }
 }
 
-// Handle Slip Upload Submit
+// Handle Slip File Upload Submit (Success Modal)
 async function handleSlipSubmit(e) {
   e.preventDefault();
   const bookingId = document.getElementById('slip-booking-id').value;
-  const slipUrl = document.getElementById('slip-url-input').value;
+  const fileInput = document.getElementById('slip-file-input');
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'กรุณาเลือกไฟล์',
+      text: 'กรุณาแนบไฟล์รูปภาพ Slip โอนเงิน หรือไฟล์เอกสาร (PNG, JPG, PDF)',
+      confirmButtonColor: '#6366F1'
+    });
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
 
   try {
-    const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/upload-slip`, {
+    const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/upload-slip-file`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payment_method: 'PROMPTPAY', slip_url: slipUrl })
+      body: formData
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Slip upload failed');
+    if (!res.ok) throw new Error(data.detail || 'อัปโหลดสลิปไม่สำเร็จ');
 
     closeModal('success-modal');
     Swal.fire({
       icon: 'success',
-      title: 'อัปโหลด Slip เรียบร้อย!',
-      text: 'ผู้ดูแลระบบจะทำการตรวจสอบสลิปชำระเงินของท่าน',
+      title: 'ส่งไฟล์สลิปชำระเงินเรียบร้อยแล้ว! 📄',
+      text: 'สถานะเปลี่ยนเป็น รอเจ้าหน้าที่ตรวจสอบสลิป (PENDING_VERIFICATION)',
       confirmButtonColor: '#6366F1'
     });
     switchNavTab('my-bookings');
+    document.getElementById('lookup-code-input').value = data.booking_code;
+    lookupBookingByCode();
   } catch (err) {
     Swal.fire({
       icon: 'error',
       title: 'อัปโหลด Slip ไม่สำเร็จ',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
+  }
+}
+
+function openStandaloneSlipModal(bookingId, bookingCode, totalPrice) {
+  document.getElementById('standalone-slip-booking-id').value = bookingId;
+  document.getElementById('standalone-booking-code').innerText = bookingCode;
+  document.getElementById('standalone-total-price').innerText = `฿${parseFloat(totalPrice).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+  document.getElementById('standalone-slip-file-input').value = '';
+  openModal('upload-slip-modal');
+}
+
+async function handleStandaloneSlipSubmit(e) {
+  e.preventDefault();
+  const bookingId = document.getElementById('standalone-slip-booking-id').value;
+  const fileInput = document.getElementById('standalone-slip-file-input');
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'กรุณาเลือกไฟล์',
+      text: 'กรุณาเลือกไฟล์สลิปโอนเงินก่อนทำการส่ง',
+      confirmButtonColor: '#6366F1'
+    });
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/upload-slip-file`, {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'อัปโหลดไฟล์ไม่สำเร็จ');
+
+    closeModal('upload-slip-modal');
+    Swal.fire({
+      icon: 'success',
+      title: 'ส่งไฟล์สลิปชำระเงินเรียบร้อยแล้ว! 📄',
+      text: 'สถานะการชำระเงินเปลี่ยนเป็น รอเจ้าหน้าที่ตรวจสอบสลิป (PENDING_VERIFICATION)',
+      confirmButtonColor: '#6366F1'
+    });
+    if (state.token) {
+      fetchMyBookings();
+    } else {
+      lookupBookingByCode();
+    }
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'อัปโหลดสลิปไม่สำเร็จ',
       text: err.message,
       confirmButtonColor: '#EF4444'
     });
@@ -794,13 +864,22 @@ function renderBookingsList(bookings, container) {
               <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
               <td><span class="badge badge-${b.payment_status.toLowerCase()}">${b.payment_status}</span></td>
               <td>
-                <div style="display: flex; gap: 0.4rem;">
-                  <button class="btn btn-success btn-sm" onclick="performCheckin(${b.id})">
-                    <i class="fa-solid fa-qrcode"></i> Check-in
-                  </button>
-                  <button class="btn btn-danger btn-sm" onclick="performCancel(${b.id})">
-                    <i class="fa-solid fa-ban"></i> ยกเลิก (ล่วงหน้า 3 วัน)
-                  </button>
+                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                  ${(b.payment_status === 'UNPAID' || b.payment_status === 'REJECTED') ? `
+                    <button class="btn btn-primary btn-sm" onclick="openStandaloneSlipModal(${b.id}, '${b.booking_code}', ${b.total_price})">
+                      <i class="fa-solid fa-credit-card"></i> แนบสลิปชำระเงิน
+                    </button>
+                  ` : ''}
+                  ${b.status === 'APPROVED' ? `
+                    <button class="btn btn-success btn-sm" onclick="performCheckin(${b.id})">
+                      <i class="fa-solid fa-qrcode"></i> Check-in
+                    </button>
+                  ` : ''}
+                  ${(b.status !== 'CANCELLED' && b.status !== 'REJECTED' && b.status !== 'NO_SHOW') ? `
+                    <button class="btn btn-danger btn-sm" onclick="performCancel(${b.id})">
+                      <i class="fa-solid fa-ban"></i> ยกเลิก
+                    </button>
+                  ` : ''}
                 </div>
               </td>
             </tr>
@@ -922,10 +1001,16 @@ async function switchAdminTab(adminTab) {
                 <td>${b.booking_mode === 'MEMBER' ? 'สมาชิก' : b.guest_name + ' (Guest)'}</td>
                 <td>${formatDateTime(b.start_time)}</td>
                 <td>฿${parseFloat(b.total_price).toLocaleString()}</td>
-                <td><span class="badge badge-pending">PENDING</span></td>
+                <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span> <br><span class="badge badge-${b.payment_status.toLowerCase()}" style="margin-top:2px;">${b.payment_status}</span></td>
                 <td>
-                  <button class="btn btn-success btn-sm" onclick="adminApproveBooking(${b.id}, 'APPROVE')">อนุมัติ</button>
-                  <button class="btn btn-danger btn-sm" onclick="adminApproveBooking(${b.id}, 'REJECT')">ปฏิเสธ</button>
+                  <div style="display: flex; gap: 0.3rem;">
+                    ${b.payment_status === 'PAID' ? `
+                      <button class="btn btn-success btn-sm" onclick="adminApproveBooking(${b.id}, 'APPROVE')"><i class="fa-solid fa-check"></i> อนุมัติการจอง</button>
+                    ` : `
+                      <button class="btn btn-secondary btn-sm" style="opacity: 0.75;" onclick="Swal.fire('ยังไม่อนุมัติ', 'ไม่สามารถอนุมัติการจองได้ เนื่องจากผู้ใช้งานยังไม่ได้ชำระเงิน หรือสลิปชำระเงินยังไม่ผ่านการอนุมัติ (ต้องอนุมัติสลิปโอนเงินในแท็บสลิปชำระเงินให้เป็น PAID ก่อนเท่านั้น)', 'warning')"><i class="fa-solid fa-lock"></i> รอชำระเงิน/รอตรวจสลิป</button>
+                    `}
+                    <button class="btn btn-danger btn-sm" onclick="adminApproveBooking(${b.id}, 'REJECT')"><i class="fa-solid fa-xmark"></i> ปฏิเสธ</button>
+                  </div>
                 </td>
               </tr>
             `).join('')}
