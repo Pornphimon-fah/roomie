@@ -250,12 +250,12 @@
         <form id="booking-form" onsubmit="handleBookingSubmit(event)">
           <input type="hidden" id="booking-room-id">
 
-          <!-- Booking Mode Switcher -->
-          <div class="form-group" style="margin-bottom: 1rem;">
+          <!-- Booking Mode Switcher (Auto-detected based on Auth state, hidden from UI) -->
+          <div class="form-group" id="booking-mode-group" style="display: none;">
             <label>รูปแบบการจอง</label>
             <select id="booking-mode-select" class="form-control" onchange="toggleBookingModeForm()">
-              <option value="MEMBER"> Member Booking (ราคาสมาชิกส่วนลดพิเศษ)</option>
-              <option value="GUEST"> Guest Booking (บุคคลทั่วไป)</option>
+              <option value="MEMBER">Member Booking (ราคาสมาชิกส่วนลดพิเศษ)</option>
+              <option value="GUEST">Guest Booking (บุคคลทั่วไป)</option>
             </select>
           </div>
 
