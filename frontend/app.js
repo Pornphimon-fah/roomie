@@ -177,11 +177,39 @@ function switchNavTab(tabName) {
   }
 }
 
+function getLocalDateString(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function setDefaultDates() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('filter-date').value = today;
-  document.getElementById('timeline-date-picker').value = today;
-  document.getElementById('booking-date').value = today;
+  const todayObj = new Date();
+  const todayStr = getLocalDateString(todayObj);
+
+  const maxObj = new Date();
+  maxObj.setDate(todayObj.getDate() + 15);
+  const maxStr = getLocalDateString(maxObj);
+
+  const filterDateInput = document.getElementById('filter-date');
+  if (filterDateInput) {
+    filterDateInput.value = todayStr;
+  }
+
+  const timelineDateInput = document.getElementById('timeline-date-picker');
+  if (timelineDateInput) {
+    timelineDateInput.value = todayStr;
+    timelineDateInput.min = todayStr;
+    timelineDateInput.max = maxStr;
+  }
+
+  const bookingDateInput = document.getElementById('booking-date');
+  if (bookingDateInput) {
+    bookingDateInput.value = todayStr;
+    bookingDateInput.min = todayStr; // Lock past dates
+    bookingDateInput.max = maxStr;   // Lock dates beyond 15 days
+  }
 }
 
 // --- Fetch API Data ---
@@ -549,6 +577,24 @@ async function handleBookingSubmit(e) {
       icon: 'warning',
       title: 'กรอกข้อมูลไม่ครบถ้วน',
       text: 'กรุณาเลือกวันที่และเวลาเข้าใช้งานห้องประชุม',
+      confirmButtonColor: '#6366F1'
+    });
+    return;
+  }
+
+  // Validate 15-day limit on submit
+  const selDate = new Date(`${dateStr}T00:00:00`);
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  const maxAllowedDate = new Date(todayDate);
+  maxAllowedDate.setDate(todayDate.getDate() + 15);
+
+  if (selDate < todayDate || selDate > maxAllowedDate) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'วันที่ไม่อยู่ในเงื่อนไขการจอง',
+      text: 'สามารถจองล่วงหน้าได้ตั้งแต่วันนี้ จนถึงไม่เกิน 15 วันเท่านั้น',
       confirmButtonColor: '#6366F1'
     });
     return;
