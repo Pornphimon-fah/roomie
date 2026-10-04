@@ -1498,8 +1498,17 @@ async function openRoomModal(roomId = null) {
             <input type="number" id="swal-room-capacity" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room ? room.capacity : 10}">
           </div>
           <div>
-            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🖼️ URL รูปภาพห้องประชุม</label>
-            <input id="swal-room-image" style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--bg-tertiary); color: var(--text-primary);" value="${room && room.image_url ? room.image_url : ''}" placeholder="https://images.unsplash.com/...">
+            <label style="font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">🖼️ แนบไฟล์ภาพห้องประชุม</label>
+            <input type="file" id="swal-room-file" accept="image/*" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: var(--bg-tertiary); color: var(--text-primary);" onchange="previewSwalRoomImage(this)">
+            <input type="hidden" id="swal-room-image-url" value="${room && room.image_url ? room.image_url : ''}">
+            <div id="swal-room-image-preview" style="margin-top: 0.35rem; font-size: 0.85rem; color: var(--text-muted);">
+              ${room && room.image_url ? `
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <img src="${room.image_url}" style="width:42px; height:30px; object-fit:cover; border-radius:4px; border:1px solid var(--border-color);">
+                  <span style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; color:var(--text-primary);">${room.image_url.split('/').pop()}</span>
+                </div>
+              ` : 'ยังไม่ได้แนบไฟล์ภาพ'}
+            </div>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 0.85rem;">
@@ -1527,18 +1536,40 @@ async function openRoomModal(roomId = null) {
     confirmButtonText: roomId ? 'บันทึกการแก้ไข' : 'เพิ่มห้องประชุม',
     cancelButtonText: 'ยกเลิก',
     confirmButtonColor: '#10B981',
-    preConfirm: () => {
+    preConfirm: async () => {
       const name = document.getElementById('swal-room-name').value.trim();
       const location = document.getElementById('swal-room-location').value.trim();
       if (!name || !location) {
         Swal.showValidationMessage('กรุณากรอกชื่อห้องประชุมและสถานที่ตั้ง');
         return false;
       }
+
+      let finalImageUrl = document.getElementById('swal-room-image-url').value;
+      const fileInput = document.getElementById('swal-room-file');
+
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        try {
+          const formData = new FormData();
+          formData.append('file', fileInput.files[0]);
+          const uploadRes = await fetch(`${API_BASE_URL}/rooms/upload-image`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${state.token}` },
+            body: formData
+          });
+          const uploadData = await uploadRes.json();
+          if (!uploadRes.ok) throw new Error(uploadData.detail || 'อัปโหลดภาพไม่สำเร็จ');
+          finalImageUrl = uploadData.image_url;
+        } catch (err) {
+          Swal.showValidationMessage(`เกิดข้อผิดพลาดในการอัปโหลดไฟล์ภาพ: ${err.message}`);
+          return false;
+        }
+      }
+
       return {
         name: name,
         location: location,
         capacity: parseInt(document.getElementById('swal-room-capacity').value) || 10,
-        image_url: document.getElementById('swal-room-image').value.trim() || null,
+        image_url: finalImageUrl || null,
         description: document.getElementById('swal-room-desc').value.trim() || null,
         standard_price: parseFloat(document.getElementById('swal-room-std-price').value) || 0,
         member_price: parseFloat(document.getElementById('swal-room-mem-price').value) || 0,
@@ -2236,5 +2267,22 @@ async function confirmDeleteUser(userId, userName) {
       text: err.message,
       confirmButtonColor: '#EF4444'
     });
+  }
+}
+
+function previewSwalRoomImage(input) {
+  const container = document.getElementById('swal-room-image-preview');
+  if (!container) return;
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      container.innerHTML = `
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.3rem;">
+          <img src="${e.target.result}" style="width:42px; height:30px; object-fit:cover; border-radius:4px; border:1px solid var(--border-color);">
+          <span style="font-size:0.8rem; color:var(--success); font-weight:600;"><i class="fa-solid fa-check"></i> เลือกภาพสำเร็จ: ${input.files[0].name}</span>
+        </div>
+      `;
+    };
+    reader.readAsDataURL(input.files[0]);
   }
 }

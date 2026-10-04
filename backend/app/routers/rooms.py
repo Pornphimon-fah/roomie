@@ -1,6 +1,8 @@
+import os
+import uuid
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
@@ -9,6 +11,30 @@ from app.schemas import RoomCreate, RoomResponse
 from app.deps import get_current_admin, get_current_approver
 
 router = APIRouter(prefix="/rooms", tags=["Meeting Rooms"])
+
+@router.post("/upload-image")
+async def upload_room_image(file: UploadFile = File(...)):
+    filename = file.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in [".jpg", ".jpeg", ".png", ".webp", ".gif"]:
+        raise HTTPException(
+            status_code=400,
+            detail="รูปแบบไฟล์ไม่ถูกต้อง รองรับเฉพาะไฟล์ภาพ (.jpg, .jpeg, .png, .webp, .gif) เท่านั้น"
+        )
+
+    upload_dir = os.path.join(os.path.dirname(__file__), "..", "static", "uploads", "rooms")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    new_filename = f"room_{uuid.uuid4().hex[:10]}{ext}"
+    file_path = os.path.join(upload_dir, new_filename)
+
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    image_url = f"http://localhost:8000/static/uploads/rooms/{new_filename}"
+    return {"image_url": image_url}
+
 
 @router.get("", response_model=List[RoomResponse])
 async def list_rooms(
