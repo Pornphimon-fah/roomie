@@ -86,10 +86,21 @@ async function handleLogin(e) {
 
     closeModal('login-modal');
     checkAuth();
-    alert(`ยินดีต้อนรับคุณ ${state.user.full_name}!`);
+    Swal.fire({
+      icon: 'success',
+      title: 'เข้าสู่ระบบสำเร็จ',
+      text: `ยินดีต้อนรับคุณ ${state.user.full_name}!`,
+      timer: 2000,
+      showConfirmButton: false
+    });
     fetchRooms();
   } catch (err) {
-    alert(`เข้าสู่ระบบไม่สำเร็จ: ${err.message}`);
+    Swal.fire({
+      icon: 'error',
+      title: 'เข้าสู่ระบบไม่สำเร็จ',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -110,10 +121,21 @@ async function handleRegister(e) {
     if (!res.ok) throw new Error(data.detail || 'Registration failed');
 
     closeModal('register-modal');
-    alert('สมัครสมาชิกสำเร็จเรียบร้อย! กรุณาเข้าสู่ระบบด้วยบัญชีของคุณ');
-    openModal('login-modal');
+    Swal.fire({
+      icon: 'success',
+      title: 'สมัครสมาชิกสำเร็จ!',
+      text: 'กรุณาเข้าสู่ระบบด้วยบัญชีของคุณ',
+      confirmButtonColor: '#6366F1'
+    }).then(() => {
+      openModal('login-modal');
+    });
   } catch (err) {
-    alert(`สมัครสมาชิกไม่สำเร็จ: ${err.message}`);
+    Swal.fire({
+      icon: 'error',
+      title: 'สมัครสมาชิกไม่สำเร็จ',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -124,7 +146,12 @@ function handleLogout() {
   localStorage.removeItem('roomie_user');
   checkAuth();
   switchNavTab('rooms');
-  alert('ออกจากระบบเรียบร้อยแล้ว');
+  Swal.fire({
+    icon: 'info',
+    title: 'ออกจากระบบเรียบร้อยแล้ว',
+    timer: 1800,
+    showConfirmButton: false
+  });
 }
 
 // --- Navigation Tabs ---
@@ -511,11 +538,21 @@ async function handleBookingSubmit(e) {
   
   const mode = document.getElementById('booking-mode-select').value;
   const roomId = parseInt(document.getElementById('booking-room-id').value);
-  const subject = document.getElementById('booking-subject').value;
-  const purpose = document.getElementById('booking-purpose').value;
+  const subject = document.getElementById('booking-subject').value.trim();
+  const purpose = document.getElementById('booking-purpose').value.trim();
   const dateStr = document.getElementById('booking-date').value;
   const startStr = document.getElementById('booking-start').value;
   const endStr = document.getElementById('booking-end').value;
+
+  if (!dateStr || !startStr || !endStr) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'กรอกข้อมูลไม่ครบถ้วน',
+      text: 'กรุณาเลือกวันที่และเวลาเข้าใช้งานห้องประชุม',
+      confirmButtonColor: '#6366F1'
+    });
+    return;
+  }
 
   const start_time = `${dateStr}T${startStr}:00`;
   const end_time = `${dateStr}T${endStr}:00`;
@@ -545,9 +582,23 @@ async function handleBookingSubmit(e) {
   };
 
   if (mode === 'GUEST') {
-    payload.guest_name = document.getElementById('guest-name').value;
-    payload.guest_email = document.getElementById('guest-email').value;
-    payload.guest_phone = document.getElementById('guest-phone').value;
+    const guest_name = document.getElementById('guest-name').value.trim();
+    const guest_email = document.getElementById('guest-email').value.trim();
+    const guest_phone = document.getElementById('guest-phone').value.trim();
+
+    if (!guest_name || !guest_email || !guest_phone) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'กรุณากรอกข้อมูลผู้ติดต่อ',
+        text: 'สำหรับบุคคลทั่วไป กรุณากรอก ชื่อ-นามสกุล, อีเมล และเบอร์โทรศัพท์ให้ครบถ้วน',
+        confirmButtonColor: '#6366F1'
+      });
+      return;
+    }
+
+    payload.guest_name = guest_name;
+    payload.guest_email = guest_email;
+    payload.guest_phone = guest_phone;
   }
 
   const headers = { 'Content-Type': 'application/json' };
@@ -563,18 +614,32 @@ async function handleBookingSubmit(e) {
     if (!res.ok) throw new Error(data.detail || 'Booking failed');
 
     closeModal('booking-modal');
-
-    // Show Success Modal
-    document.getElementById('success-booking-code').innerText = data.booking_code;
-    document.getElementById('slip-booking-id').value = data.id;
-    openModal('success-modal');
-
-    // Reset form after successful submission
     resetBookingForm();
 
-    fetchRooms();
+    Swal.fire({
+      icon: 'success',
+      title: '🎉 จองห้องประชุมสำเร็จ!',
+      html: `
+        <div style="font-size: 1rem; margin-top: 0.5rem; text-align: center;">
+          <p>รหัสการจองของคุณคือ: <strong style="color: #6366F1; font-size: 1.4rem;">${data.booking_code}</strong></p>
+          <p style="font-size: 0.88rem; color: #6B7280; margin-top: 0.5rem;">กรุณาสแกน PromptPay QR Code เพื่อแนบ Slip ชำระเงินในขั้นตอนถัดไป</p>
+        </div>
+      `,
+      confirmButtonText: 'แนบ Slip ชำระเงิน',
+      confirmButtonColor: '#6366F1'
+    }).then(() => {
+      document.getElementById('success-booking-code').innerText = data.booking_code;
+      document.getElementById('slip-booking-id').value = data.id;
+      openModal('success-modal');
+      fetchRooms();
+    });
   } catch (err) {
-    alert(`เกิดข้อผิดพลาดในการจอง: ${err.message}`);
+    Swal.fire({
+      icon: 'error',
+      title: 'เกิดข้อผิดพลาดในการจอง',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -594,10 +659,20 @@ async function handleSlipSubmit(e) {
     if (!res.ok) throw new Error(data.detail || 'Slip upload failed');
 
     closeModal('success-modal');
-    alert('อัปโหลด Slip โอนเงินเรียบร้อยแล้ว! ผู้ดูแลจะตรวจสอบสลิปของท่าน');
+    Swal.fire({
+      icon: 'success',
+      title: 'อัปโหลด Slip เรียบร้อย!',
+      text: 'ผู้ดูแลระบบจะทำการตรวจสอบสลิปชำระเงินของท่าน',
+      confirmButtonColor: '#6366F1'
+    });
     switchNavTab('my-bookings');
   } catch (err) {
-    alert(`อัปโหลด Slip ไม่สำเร็จ: ${err.message}`);
+    Swal.fire({
+      icon: 'error',
+      title: 'อัปโหลด Slip ไม่สำเร็จ',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -632,7 +707,12 @@ async function lookupBookingByCode() {
 
     renderBookingsList([data], container);
   } catch (err) {
-    alert(err.message);
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่พบรหัสการจอง',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -691,25 +771,53 @@ async function performCheckin(bookingId) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Check-in failed');
 
-    alert('Check-in สำเร็จเรียบร้อย! ยินดีต้อนรับเข้าใช้งานห้องประชุม');
+    Swal.fire({
+      icon: 'success',
+      title: 'Check-in สำเร็จ!',
+      text: 'ยินดีต้อนรับเข้าใช้งานห้องประชุม',
+      confirmButtonColor: '#10B981'
+    });
     fetchMyBookings();
   } catch (err) {
-    alert(`Check-in ไม่สำเร็จ: ${err.message}`);
+    Swal.fire({
+      icon: 'error',
+      title: 'Check-in ไม่สำเร็จ',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
 async function performCancel(bookingId) {
-  if (!confirm('คุณแน่ใจหรือไม่ที่จะยกเลิกการจองนี้? (สามารถยกเลิกได้ล่วงหน้าอย่างน้อย 3 วันก่อนวันประชุม)')) return;
+  const result = await Swal.fire({
+    title: 'ยืนยันยกเลิกการจอง?',
+    text: 'สามารถยกเลิกและขอคืนเงินได้ล่วงหน้าอย่างน้อย 3 วันก่อนวันประชุม',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'ยืนยันยกเลิก',
+    cancelButtonText: 'ย้อนกลับ',
+    confirmButtonColor: '#EF4444'
+  });
+  if (!result.isConfirmed) return;
 
   try {
     const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/cancel`, { method: 'POST' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Cancellation failed');
 
-    alert('ยกเลิกการจองเรียบร้อยแล้ว!');
+    Swal.fire({
+      icon: 'success',
+      title: 'ยกเลิกการจองเรียบร้อยแล้ว',
+      confirmButtonColor: '#10B981'
+    });
     fetchMyBookings();
   } catch (err) {
-    alert(`ไม่สามารถยกเลิกการจองได้: ${err.message}`);
+    Swal.fire({
+      icon: 'error',
+      title: 'ไม่สามารถยกเลิกการจองได้',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -839,10 +947,20 @@ async function adminApproveBooking(bookingId, action) {
     });
     if (!res.ok) throw new Error('Action failed');
 
-    alert(`ทำรายการ ${action} สำเร็จ!`);
+    Swal.fire({
+      icon: 'success',
+      title: `ทำรายการ ${action} สำเร็จ!`,
+      timer: 1500,
+      showConfirmButton: false
+    });
     loadAdminDashboard();
   } catch (err) {
-    alert(err.message);
+    Swal.fire({
+      icon: 'error',
+      title: 'เกิดข้อผิดพลาด',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 
@@ -858,10 +976,20 @@ async function adminVerifyPayment(bookingId, action) {
     });
     if (!res.ok) throw new Error('Verification failed');
 
-    alert('ตรวจสอบสลิปชำระเงินเรียบร้อยแล้ว!');
+    Swal.fire({
+      icon: 'success',
+      title: 'ตรวจสอบสลิปชำระเงินเรียบร้อยแล้ว!',
+      timer: 1500,
+      showConfirmButton: false
+    });
     loadAdminDashboard();
   } catch (err) {
-    alert(err.message);
+    Swal.fire({
+      icon: 'error',
+      title: 'เกิดข้อผิดพลาด',
+      text: err.message,
+      confirmButtonColor: '#EF4444'
+    });
   }
 }
 

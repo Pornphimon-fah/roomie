@@ -104,33 +104,33 @@ async def create_booking(
     if b_in.start_time > max_advance_date:
         raise HTTPException(
             status_code=400,
-            detail="Cannot book more than 15 days in advance"
+            detail="สามารถจองล่วงหน้าได้ไม่เกิน 15 วัน"
         )
     if b_in.start_time < now - timedelta(minutes=5):
-        raise HTTPException(status_code=400, detail="Start time cannot be in the past")
+        raise HTTPException(status_code=400, detail="เวลาเริ่มต้นต้องไม่อยู่ในอดีต")
 
-    # 2. Enforce Booking Slot Duration Limit (30 mins to 1 hour)
+    # 2. Enforce Booking Slot Duration Limit (30 mins to 8 hours)
     duration_seconds = (b_in.end_time - b_in.start_time).total_seconds()
-    if duration_seconds < 1800 or duration_seconds > 3600:
+    if duration_seconds < 1800 or duration_seconds > 28800:
         raise HTTPException(
             status_code=400,
-            detail="Booking duration must be between 30 minutes and 1 hour"
+            detail="ระยะเวลาจองต้องอยู่ระหว่าง 30 นาที ถึง 8 ชั่วโมง"
         )
 
     # 3. Mode validation
     if b_in.booking_mode == BookingMode.GUEST:
         if not b_in.guest_name or not b_in.guest_email or not b_in.guest_phone:
-            raise HTTPException(status_code=400, detail="Guest name, email, and phone are required for guest booking")
+            raise HTTPException(status_code=400, detail="กรุณากรอกชื่อ อีเมล และเบอร์โทรศัพท์ผู้ติดต่อสำหรับบุคคลทั่วไป")
     elif b_in.booking_mode == BookingMode.MEMBER:
         if not current_user:
-            raise HTTPException(status_code=401, detail="Must be logged in to make a member booking")
+            raise HTTPException(status_code=401, detail="กรุณาเข้าสู่ระบบเพื่อใช้สิทธิ์ราคาสมาชิก")
 
     # 4. Fetch Room
     room_stmt = select(MeetingRoom).where(MeetingRoom.id == b_in.room_id)
     room_res = await db.execute(room_stmt)
     room = room_res.scalar_one_or_none()
     if not room:
-        raise HTTPException(status_code=404, detail="Meeting room not found")
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลห้องประชุมนี้")
 
     # 5. Overlap Protection
     overlap_stmt = select(Booking).where(
@@ -143,7 +143,7 @@ async def create_booking(
     )
     overlap_res = await db.execute(overlap_stmt)
     if overlap_res.scalars().first():
-        raise HTTPException(status_code=400, detail="The selected room is already booked for this time slot")
+        raise HTTPException(status_code=400, detail="ห้องประชุมนี้ถูกจองในช่วงเวลาดังกล่าวแล้ว กรุณาเลือกช่วงเวลาอื่น")
 
     # 6. Calculate Prices (Member vs Guest)
     is_member = (b_in.booking_mode == BookingMode.MEMBER)
