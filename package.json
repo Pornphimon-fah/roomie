@@ -1,0 +1,11 @@
+{
+  "name": "roomie",
+  "version": "1.0.0",
+  "description": "Meeting Room Booking System",
+  "scripts": {
+    "start": "./start.sh",
+    "dev": "./start.sh"
+  },
+  "author": "Pornphimon-fah",
+  "license": "MIT"
+}

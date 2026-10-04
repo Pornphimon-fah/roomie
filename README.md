@@ -4,6 +4,28 @@
 
 ---
 
+## ⚡ วิธีรันระบบด้วยคำสั่งเดียว (One-Click Quick Start)
+
+หากคุณติดตั้งไลบรารีและ Docker ในเครื่องเรียบร้อยแล้ว สามารถเปิดรันระบบทั้งหมด (Database + Backend + Frontend + เปิดเว็บเบราว์เซอร์) ได้ด้วยคำสั่งเดียว:
+
+### 🍎 สำหรับ macOS / Linux:
+เปิดโปรแกรม **Terminal** ในโฟลเดอร์โปรเจกต์ แล้วพิมพ์คำสั่ง:
+```bash
+./start.sh
+```
+*(หรือจะพิมพ์ `npm start` ก็ได้เช่นกัน)*
+
+---
+
+### 🪟 สำหรับ Windows:
+ดับเบิ้ลคลิกที่ไฟล์ **`start.bat`** ในโฟลเดอร์โปรเจกต์ 
+หรือเปิด **Command Prompt (cmd)** ในโฟลเดอร์โปรเจกต์แล้วพิมพ์:
+```cmd
+start.bat
+```
+
+---
+
 ## ✨ ฟีเจอร์เด่นของระบบ (Key Features)
 
 - 📅 **ปฏิทินตารางเวลาแบบยืดหยุ่น (Interactive Room Calendar)**: แสดงสถานะการจองแบบเรียลไทม์ เลือกดูได้ทั้งแบบรายวัน รายสัปดาห์ รายเดือน และรายปี (FullCalendar v6)
@@ -30,88 +52,58 @@
 
 ---
 
-## 🚀 ขั้นตอนการเปิดใช้งานสำหรับผู้พัฒนา (Run Dev Guide)
+## 📖 วิธีรันระบบแบบแยกตามขั้นตอน (Manual Step-by-Step)
 
-โปรดเลือกดูขั้นตอนตามระบบปฏิบัติการของคุณ (macOS หรือ Windows):
+หากต้องการรันทีละส่วนเพื่อตรวจสอบการทำงาน สามารถรันตามขั้นตอนด้านล่างได้ครับ:
 
-### 🍎 1. ขั้นตอนการรันโปรเจกต์สำหรับ macOS / Linux
+### 🍎 1. ขั้นตอนการรันสำหรับ macOS / Linux
 
 #### Step 1: เปิดใช้งาน PostgreSQL Database (ผ่าน Docker)
-เปิดโปรแกรม **Terminal** แล้วคัดลอกคำสั่งด้านล่างไปวาง:
 ```bash
 docker run -d --name roomie-db -p 5432:5432 -e POSTGRES_DB=roomiedb -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgrespassword postgres:15-alpine
 ```
 
 #### Step 2: รันระบบหลังบ้าน (Backend Server - FastAPI)
-ในหน้าต่าง **Terminal** เดิม รันคำสั่งทีละบรรทัด:
 ```bash
-# 1. เข้าสู่โฟลเดอร์ backend
 cd backend
-
-# 2. สร้างและเปิดใช้งาน Virtual Environment
-python3 -m venv venv
 source venv/bin/activate
-
-# 3. ติดตั้งไลบรารีทั้งหมด
 pip install -r requirements.txt
-
-# 4. สร้างตารางและใส่ข้อมูลเริ่มต้น (Seed Data)
 python3 -m app.init_db
-
-# 5. รัน Backend Server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 *(ระบบหลังบ้านจะรันที่: **`http://localhost:8000`** | ดูเอกสาร API ได้ที่ `http://localhost:8000/docs`)*
 
 #### Step 3: รันระบบหน้าบ้าน (Frontend Web Server)
-เปิดหน้าต่าง **Terminal ใหม่** (แยกกับระบบหลังบ้าน) แล้วรันคำสั่ง:
+เปิด Terminal หน้าต่างใหม่ แล้วรันคำสั่ง:
 ```bash
-# 1. เข้าสู่โฟลเดอร์ frontend
 cd frontend
-
-# 2. รัน Web Server บนพอร์ต 5500
 python3 -m http.server 5500
 ```
 👉 เปิดโปรแกรม Web Browser เข้าไปที่: **`http://localhost:5500`**
 
 ---
 
-### 🪟 2. ขั้นตอนการรันโปรเจกต์สำหรับ Windows
+### 🪟 2. ขั้นตอนการรันสำหรับ Windows
 
 #### Step 1: เปิดใช้งาน PostgreSQL Database (ผ่าน Docker)
-เปิดโปรแกรม **Command Prompt (cmd)** หรือ **PowerShell** แล้วคัดลอกคำสั่งด้านล่างไปวาง:
 ```cmd
 docker run -d --name roomie-db -p 5432:5432 -e POSTGRES_DB=roomiedb -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgrespassword postgres:15-alpine
 ```
 
 #### Step 2: รันระบบหลังบ้าน (Backend Server - FastAPI)
-ในหน้าต่าง **Command Prompt / PowerShell** เดิม รันคำสั่งทีละบรรทัด:
 ```cmd
-:: 1. เข้าสู่โฟลเดอร์ backend
 cd backend
-
-:: 2. สร้างและเปิดใช้งาน Virtual Environment
-python -m venv venv
 venv\Scripts\activate
-
-:: 3. ติดตั้งไลบรารีทั้งหมด
 pip install -r requirements.txt
-
-:: 4. สร้างตารางและใส่ข้อมูลเริ่มต้น (Seed Data)
 python -m app.init_db
-
-:: 5. รัน Backend Server
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 *(ระบบหลังบ้านจะรันที่: **`http://localhost:8000`** | ดูเอกสาร API ได้ที่ `http://localhost:8000/docs`)*
 
 #### Step 3: รันระบบหน้าบ้าน (Frontend Web Server)
-เปิดหน้าต่าง **Command Prompt / PowerShell ใหม่** (แยกกับระบบหลังบ้าน) แล้วรันคำสั่ง:
+เปิด Command Prompt หน้าต่างใหม่ แล้วรันคำสั่ง:
 ```cmd
-:: 1. เข้าสู่โฟลเดอร์ frontend
 cd frontend
-
-:: 2. รัน Web Server บนพอร์ต 5500
 python -m http.server 5500
 ```
 👉 เปิดโปรแกรม Web Browser เข้าไปที่: **`http://localhost:5500`**
@@ -119,8 +111,6 @@ python -m http.server 5500
 ---
 
 ## 🔑 บัญชีผู้ใช้งานทดสอบในระบบ (Default Test Accounts)
-
-คุณสามารถใช้บัญชีทดสอบที่ระบบสร้างไว้ให้ เพื่อลองเข้าใช้งานในสิทธิ์ต่างๆ ได้ทันที:
 
 | สิทธิ์การใช้งาน (Role) | อีเมล (Email) | รหัสผ่าน (Password) | คำอธิบายสิทธิ์ |
 |---|---|---|---|
@@ -142,6 +132,8 @@ python -m http.server 5500
 
 ```text
 Roomie/
+├── start.sh                  # สคริปต์รันระบบในคำสั่งเดียวสำหรับ macOS / Linux
+├── start.bat                 # สคริปต์รันระบบในคำสั่งเดียวสำหรับ Windows
 ├── backend/                  # ระบบบริการหลังบ้าน (FastAPI)
 │   ├── app/
 │   │   ├── models/           # Database Models (SQLAlchemy)
