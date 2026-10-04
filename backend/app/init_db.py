@@ -161,6 +161,30 @@ async def init_db():
                     available_quantity=4,
                     standard_price=150.00,
                     member_price=80.00
+                ),
+                Equipment(
+                    name="Wireless Presenter Clicker & Laser",
+                    description="Long range wireless slide presenter with red laser pointer",
+                    total_quantity=10,
+                    available_quantity=10,
+                    standard_price=50.00,
+                    member_price=20.00
+                ),
+                Equipment(
+                    name="Portable Bluetooth Speakerphone",
+                    description="High clarity noise cancelling speakerphone for group calls",
+                    total_quantity=5,
+                    available_quantity=5,
+                    standard_price=120.00,
+                    member_price=60.00
+                ),
+                Equipment(
+                    name="Document Camera / Visualizer 4K",
+                    description="Ultra HD document camera for real-time document casting",
+                    total_quantity=3,
+                    available_quantity=3,
+                    standard_price=180.00,
+                    member_price=90.00
                 )
             ]
             session.add_all(sample_eqs)

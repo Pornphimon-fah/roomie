@@ -355,7 +355,10 @@ function getEquipmentIcon(name) {
   if (n.includes('mic') || n.includes('ไมค์')) return 'fa-microphone';
   if (n.includes('projector') || n.includes('โปรเจคเตอร์')) return 'fa-video';
   if (n.includes('whiteboard') || n.includes('กระดาน')) return 'fa-chalkboard';
-  if (n.includes('conference') || n.includes('กล้อง')) return 'fa-headset';
+  if (n.includes('clicker') || n.includes('presenter')) return 'fa-hand-pointer';
+  if (n.includes('speaker') || n.includes('ลำโพง')) return 'fa-volume-high';
+  if (n.includes('camera') || n.includes('visualizer') || n.includes('กล้อง')) return 'fa-camera';
+  if (n.includes('conference')) return 'fa-headset';
   return 'fa-plug';
 }
 
